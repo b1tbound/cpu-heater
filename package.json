@@ -37,17 +37,22 @@
       "assets/**/*"
     ],
     "linux": {
-      "target": ["AppImage"],
+      "target": [
+        "AppImage"
+      ],
       "category": "System",
       "icon": "assets/icon.svg"
     },
     "win": {
-      "target": ["nsis", "portable"],
+      "target": [
+        "nsis",
+        "portable"
+      ],
       "icon": "assets/icon.svg"
     }
   },
   "devDependencies": {
-    "electron": "^24.22.2",
+    "electron": "^28.2.0",
     "electron-builder": "^26.18.0"
   }
 }

@@ -9,11 +9,14 @@ echo "========================================================"
 echo "  🚀 Launching CPU Heater (Fullscreen Locked Desktop App)"
 echo "========================================================"
 
-# Check if node & npm exist
-if command -v npx >/dev/null 2>&1; then
-    exec npx electron .
+# Clear ELECTRON_RUN_AS_NODE so Electron runs as a GUI application rather than node
+export ELECTRON_RUN_AS_NODE=
+
+if [ -f "./node_modules/.bin/electron" ]; then
+    exec env -u ELECTRON_RUN_AS_NODE ./node_modules/.bin/electron .
+elif command -v npx >/dev/null 2>&1; then
+    exec env -u ELECTRON_RUN_AS_NODE npx electron .
 else
-    # Fallback directly to Python backend with Chrome/Chromium kiosk mode
-    echo "Electron not found, falling back to dedicated kiosk mode..."
+    echo "Electron binary not found, falling back to dedicated kiosk mode..."
     exec python3 main.py --kiosk
 fi
