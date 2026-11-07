@@ -3,285 +3,442 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CPU HEATER</title>
+  <title>CPU Heater</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="app" class="app">
+  <div class="app-layout">
 
-    <!-- Top Bar: Clean monochrome stopwatch & sensor -->
-    <header class="topbar">
-      <div class="top-brand">
-        <span class="brand-title">CPU_HEATER</span>
-        <span class="brand-ver">v1.0</span>
+    <!-- Top header with stopwatch -->
+    <header class="header">
+      <div class="header-left">
+        <span class="logo">CPU Heater</span>
       </div>
 
-      <div id="stopwatch-container" class="stopwatch-box hidden">
-        <span class="sw-tag">TIMER</span>
-        <span id="sw-time" class="sw-digits">00:00</span>
-        <span class="sw-sep">/</span>
-        <span id="sw-total" class="sw-total">06:00</span>
-        <span id="sw-stage-badge" class="sw-badge">[RAMP]</span>
+      <!-- Centered Stopwatch -->
+      <div id="stopwatch-container" class="stopwatch-container hidden">
+        <div class="sw-time">
+          <span id="sw-time" class="sw-digits">00:00</span>
+          <span class="sw-total">/ <span id="sw-total">06:00</span></span>
+        </div>
+        <div class="sw-sub">
+          <span id="sw-stage-badge" class="sw-pill">Ramp</span>
+          <span id="sw-remaining" class="sw-rem">6:00 left</span>
+        </div>
       </div>
 
-      <div class="top-status">
-        <span id="hw-sensor-pill" class="hw-pill">DETECTING...</span>
+      <div class="header-right">
+        <div class="sensor-indicator">
+          <span class="sensor-dot"></span>
+          <span id="hw-sensor-temp">--.-°C</span>
+        </div>
       </div>
     </header>
 
-    <!-- Main Viewport -->
-    <main class="content-box">
+    <!-- Main Content: Split Layout (Options on Left, Animation/Visuals on Right) -->
+    <main class="main-body">
 
-      <!-- ========================================================= -->
-      <!-- SCREEN 0: AUTOSCAN WITH RETRO HARDWARE PROBE ANIMATION    -->
-      <!-- ========================================================= -->
-      <section id="view-autoscan" class="screen active">
-        <div class="terminal-card">
-          <div class="term-header">
-            <span class="term-title">> HARDWARE_PROBE.SYS</span>
-            <span class="term-blink-status">[RUNNING]</span>
+      <!-- ===================================================================== -->
+      <!-- VIEW 0: AUTOSCAN WITH CLEAN B&W SCAN ANIMATION                        -->
+      <!-- ===================================================================== -->
+      <section id="view-autoscan" class="view-panel active">
+        <div class="split-view">
+          <!-- Left Column: Auto-detect status & scan results -->
+          <div class="left-pane">
+            <div class="pane-header">
+              <span class="step-label">Auto-detection</span>
+              <h1 class="pane-title">Scanning your processor</h1>
+              <p class="pane-desc">We're checking your CPU model, socket type, and hardware temperature sensors.</p>
+            </div>
+
+            <div class="scan-items">
+              <div id="scan-item-cpu" class="scan-item pending">
+                <div class="scan-item-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg>
+                </div>
+                <div class="scan-item-info">
+                  <div class="scan-item-label">Processor Model</div>
+                  <div id="scan-val-cpu" class="scan-item-val">Reading /proc/cpuinfo...</div>
+                </div>
+              </div>
+
+              <div id="scan-item-socket" class="scan-item pending">
+                <div class="scan-item-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 16V8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2z"/><path d="M12 12h.01"/></svg>
+                </div>
+                <div class="scan-item-info">
+                  <div class="scan-item-label">Socket Architecture</div>
+                  <div id="scan-val-socket" class="scan-item-val">Checking retention design...</div>
+                </div>
+              </div>
+
+              <div id="scan-item-sensor" class="scan-item pending">
+                <div class="scan-item-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>
+                </div>
+                <div class="scan-item-info">
+                  <div class="scan-item-label">Thermal Sensor</div>
+                  <div id="scan-val-sensor" class="scan-item-val">Locating sensor interface...</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="pane-footer">
+              <button class="btn btn-secondary" onclick="completeScan()">Continue &rarr;</button>
+            </div>
           </div>
 
-          <!-- Retro scan animation box -->
-          <div class="scan-animation-wrap">
-            <div class="scan-grid"></div>
-            <div class="scanline"></div>
-            <div class="scan-hud">
-              <pre id="scan-ascii-cpu" class="scan-ascii">
-   +-----------------------+
-   |   [####]     [####]   |
-   |      PROBING CPU      |
-   |   [####]     [####]   |
-   +-----------------------+
-              </pre>
-              <div class="scan-progress-bar">
-                <div id="scan-progress-fill" class="scan-fill"></div>
+          <!-- Right Column: Clean Black & White Scan Animation -->
+          <div class="right-pane">
+            <div class="animation-card">
+              <div class="chip-graphic">
+                <div class="chip-pins chip-pins-top"></div>
+                <div class="chip-pins chip-pins-bottom"></div>
+                <div class="chip-pins chip-pins-left"></div>
+                <div class="chip-pins chip-pins-right"></div>
+                <div class="chip-body">
+                  <div class="scan-beam"></div>
+                  <div class="chip-inner-square"></div>
+                  <span class="chip-text">CPU</span>
+                </div>
+              </div>
+              <div class="animation-caption">
+                <span id="scan-anim-status" class="caption-main">Detecting hardware</span>
+                <span class="caption-sub">Reading hardware thermal registers</span>
               </div>
             </div>
           </div>
-
-          <div id="scan-log-feed" class="scan-logs">
-            <div class="log-line">> Initializing system bus query...</div>
-          </div>
-
-          <div class="term-actions">
-            <button id="btn-skip-scan" class="btn btn-outline" onclick="completeScan()">SKIP_PROBE [ENTER]</button>
-          </div>
         </div>
       </section>
 
-      <!-- ========================================================= -->
-      <!-- SCREEN 1: STEP-BY-STEP HARDWARE WIZARD                   -->
-      <!-- ========================================================= -->
-      <section id="view-wizard" class="screen">
-        <div class="wizard-box">
-          <div class="step-counter">
-            <span id="wiz-step-tag">STEP 1 OF 3</span>
-            <span class="step-sub">HARDWARE CONFIGURATION</span>
+      <!-- ===================================================================== -->
+      <!-- VIEW 1: STEP-BY-STEP QUESTIONNAIRE (OPTIONS LEFT, GRAPHIC RIGHT)     -->
+      <!-- ===================================================================== -->
+      <section id="view-wizard" class="view-panel">
+        <div class="split-view">
+          <!-- Left Column: Steps & Options -->
+          <div class="left-pane">
+            
+            <!-- Step 1: Socket Type -->
+            <div id="step-pane-1" class="step-pane active">
+              <div class="pane-header">
+                <span class="step-label">Step 1 of 3 &middot; Socket</span>
+                <h1 class="pane-title">Confirm CPU socket</h1>
+                <p id="wiz-socket-detected-note" class="pane-desc">Auto-detected AMD Ryzen 7 1700 on Socket AM4 (PGA).</p>
+              </div>
+
+              <div class="options-list">
+                <button class="choice-card" onclick="selectSocket('pga')">
+                  <div class="choice-radio"></div>
+                  <div class="choice-text">
+                    <div class="choice-title">PGA (Pins on processor)</div>
+                    <div class="choice-desc">AMD AM4, AM3+, FM2+. The processor can be pulled out if paste is cold.</div>
+                  </div>
+                </button>
+
+                <button class="choice-card" onclick="selectSocket('lga')">
+                  <div class="choice-radio"></div>
+                  <div class="choice-text">
+                    <div class="choice-title">LGA (Pins in motherboard socket)</div>
+                    <div class="choice-desc">AMD AM5, Intel LGA1700, 1851, 1200. Clamped by retention bracket.</div>
+                  </div>
+                </button>
+
+                <button class="choice-card" onclick="selectSocket('hedt')">
+                  <div class="choice-radio"></div>
+                  <div class="choice-text">
+                    <div class="choice-title">HEDT / Workstation</div>
+                    <div class="choice-desc">AMD Threadripper (TR4/sTR5), Intel Xeon. Large surface area and suction.</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <!-- Step 2: Cooler Type -->
+            <div id="step-pane-2" class="step-pane">
+              <div class="pane-header">
+                <span class="step-label">Step 2 of 3 &middot; Cooler</span>
+                <h1 class="pane-title">Cooler baseplate design</h1>
+                <p class="pane-desc">Select how your cooler makes contact with the processor.</p>
+              </div>
+
+              <div class="options-list">
+                <button class="choice-card" onclick="selectCooler('flat')">
+                  <div class="choice-radio"></div>
+                  <div class="choice-text">
+                    <div class="choice-title">Flat solid plate</div>
+                    <div class="choice-desc">Smooth copper or nickel plate. Common on AIO liquid coolers and premium air coolers.</div>
+                  </div>
+                </button>
+
+                <button class="choice-card" onclick="selectCooler('hdt')">
+                  <div class="choice-radio"></div>
+                  <div class="choice-text">
+                    <div class="choice-title">Direct heat pipes (HDT)</div>
+                    <div class="choice-desc">Heat pipes make direct contact with the CPU. Grooves between pipes trap paste.</div>
+                  </div>
+                </button>
+
+                <button class="choice-card" onclick="selectCooler('fullcover')">
+                  <div class="choice-radio"></div>
+                  <div class="choice-text">
+                    <div class="choice-title">Full-cover coldplate</div>
+                    <div class="choice-desc">Large rectangular baseplate designed specifically for Threadripper.</div>
+                  </div>
+                </button>
+              </div>
+
+              <div class="pane-footer">
+                <button class="btn btn-ghost" onclick="goToWizardStep(1)">&larr; Back</button>
+              </div>
+            </div>
+
+            <!-- Step 3: Paste Type -->
+            <div id="step-pane-3" class="step-pane">
+              <div class="pane-header">
+                <span class="step-label">Step 3 of 3 &middot; Thermal Compound</span>
+                <h1 class="pane-title">Thermal paste type</h1>
+                <p class="pane-desc">Different pastes need different temperatures to loosen safely.</p>
+              </div>
+
+              <div class="options-list">
+                <button class="choice-card" onclick="selectPaste('low')">
+                  <div class="choice-radio"></div>
+                  <div class="choice-text">
+                    <div class="choice-title">Standard paste (Low to medium viscosity)</div>
+                    <div class="choice-desc">Arctic MX-4, Noctua NT-H1, Kryonaut, or general thermal grease.</div>
+                  </div>
+                </button>
+
+                <button class="choice-card" onclick="selectPaste('high')">
+                  <div class="choice-radio"></div>
+                  <div class="choice-text">
+                    <div class="choice-title">Thick paste or dried OEM compound</div>
+                    <div class="choice-desc">Arctic MX-6, Thermalright TF7, factory pre-applied paste over 2 years old.</div>
+                  </div>
+                </button>
+
+                <button class="choice-card" onclick="selectPaste('pcm')">
+                  <div class="choice-radio"></div>
+                  <div class="choice-text">
+                    <div class="choice-title">Phase-change pad (PTM7950)</div>
+                    <div class="choice-desc">Solid polymer pad that liquefies into fluid above 45°C.</div>
+                  </div>
+                </button>
+              </div>
+
+              <div class="pane-footer">
+                <button class="btn btn-ghost" onclick="goToWizardStep(2)">&larr; Back</button>
+              </div>
+            </div>
+
+            <!-- Step 4: Summary & Confirmation -->
+            <div id="step-pane-4" class="step-pane">
+              <div class="pane-header">
+                <span class="step-label">Confirmation</span>
+                <h1 class="pane-title">Ready to start</h1>
+                <p id="sum-desc" class="pane-desc">We've calculated the optimal heating profile for your setup.</p>
+              </div>
+
+              <div class="summary-card">
+                <div class="summary-item">
+                  <span class="summary-k">Profile</span>
+                  <span id="sum-profile-name" class="summary-v">Combo #1</span>
+                </div>
+                <div class="summary-item">
+                  <span class="summary-k">Peak target temperature</span>
+                  <span id="sum-peak-temp" class="summary-v">56°C</span>
+                </div>
+                <div class="summary-item">
+                  <span class="summary-k">Removal temperature</span>
+                  <span id="sum-release-temp" class="summary-v">41°C</span>
+                </div>
+                <div class="summary-item">
+                  <span class="summary-k">Total cycle duration</span>
+                  <span id="sum-duration" class="summary-v">6:00 min</span>
+                </div>
+              </div>
+
+              <div class="checkbox-row">
+                <label class="clean-checkbox">
+                  <input type="checkbox" id="chk-sim">
+                  <span class="box-check"></span>
+                  <span class="box-text">Simulation mode (test without running CPU stress)</span>
+                </label>
+              </div>
+
+              <div class="pane-footer">
+                <button class="btn btn-ghost" onclick="goToWizardStep(3)">&larr; Back</button>
+                <button class="btn btn-primary" onclick="startHeatingCycle()">Start Cycle &rarr;</button>
+              </div>
+            </div>
+
           </div>
 
-          <!-- Step 1: Socket Architecture -->
-          <div id="step-pane-1" class="step-pane active">
-            <div class="prompt-header">
-              <h2>CONFIRM CPU SOCKET ARCHITECTURE</h2>
-              <p id="prompt-socket-detected" class="prompt-detected">> Auto-detected: Loading...</p>
-            </div>
-
-            <div class="step-options">
-              <button class="opt-btn" onclick="selectSocket('pga')">
-                <span class="opt-key">[1]</span>
-                <span class="opt-name">PGA (PINS ON CPU)</span>
-                <span class="opt-info">AMD AM4, AM3+, FM2+ &mdash; HIGH RISK: CPU can be ripped from socket cold.</span>
-              </button>
-              <button class="opt-btn" onclick="selectSocket('lga')">
-                <span class="opt-key">[2]</span>
-                <span class="opt-name">LGA (PINS IN SOCKET)</span>
-                <span class="opt-info">AMD AM5, Intel LGA1700/1851/1200 &mdash; CPU clamped by retention frame.</span>
-              </button>
-              <button class="opt-btn" onclick="selectSocket('hedt')">
-                <span class="opt-key">[3]</span>
-                <span class="opt-name">HEDT / WORKSTATION</span>
-                <span class="opt-info">Threadripper (sTR5/TR4), Xeon 4677 &mdash; Massive surface area & coldplate suction.</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Step 2: Cooler Baseplate Type -->
-          <div id="step-pane-2" class="step-pane">
-            <div class="prompt-header">
-              <h2>COOLER BASEPLATE DESIGN</h2>
-              <p class="prompt-detected">> Determines thermal conductivity into thermal paste layer.</p>
-            </div>
-
-            <div class="step-options">
-              <button class="opt-btn" onclick="selectCooler('flat')">
-                <span class="opt-key">[1]</span>
-                <span class="opt-name">FLAT SOLID COPPER BASEPLATE</span>
-                <span class="opt-info">Most AIO liquid coolers, Noctua NH-D15, Arctic Liquid Freezer.</span>
-              </button>
-              <button class="opt-btn" onclick="selectCooler('hdt')">
-                <span class="opt-key">[2]</span>
-                <span class="opt-name">HDT (HEATPIPE DIRECT TOUCH)</span>
-                <span class="opt-info">Bare heatpipes exposed with grooves (Hyper 212, Peerless Assassin SE).</span>
-              </button>
-              <button class="opt-btn" onclick="selectCooler('fullcover')">
-                <span class="opt-key">[3]</span>
-                <span class="opt-name">FULL-COVER HEDT COLDPLATE</span>
-                <span class="opt-info">Threadripper / Epyc oversized rectangular copper base.</span>
-              </button>
-            </div>
-            <button class="btn btn-back" onclick="goToWizardStep(1)">&lt; BACK</button>
-          </div>
-
-          <!-- Step 3: Thermal Paste / TIM -->
-          <div id="step-pane-3" class="step-pane">
-            <div class="prompt-header">
-              <h2>THERMAL PASTE (TIM) COMPOUND</h2>
-              <p class="prompt-detected">> Viscosity and melting threshold determine required conditioning curve.</p>
-            </div>
-
-            <div class="step-options">
-              <button class="opt-btn" onclick="selectPaste('low')">
-                <span class="opt-key">[1]</span>
-                <span class="opt-name">LOW / MEDIUM VISCOSITY</span>
-                <span class="opt-info">Arctic MX-4, Noctua NT-H1, Kryonaut, standard factory paste.</span>
-              </button>
-              <button class="opt-btn" onclick="selectPaste('high')">
-                <span class="opt-key">[2]</span>
-                <span class="opt-name">HIGH VISCOSITY / DRIED OEM</span>
-                <span class="opt-info">Arctic MX-6, Thermalright TF7, stock pre-applied, 2+ years old.</span>
-              </button>
-              <button class="opt-btn" onclick="selectPaste('pcm')">
-                <span class="opt-key">[3]</span>
-                <span class="opt-name">PHASE-CHANGE PAD (PTM7950)</span>
-                <span class="opt-info">Honeywell PTM7950, solid polymer sheet melting above 45°C.</span>
-              </button>
-            </div>
-            <button class="btn btn-back" onclick="goToWizardStep(2)">&lt; BACK</button>
-          </div>
-
-          <!-- Step 4: Ready to Heat Confirmation -->
-          <div id="step-pane-4" class="step-pane">
-            <div class="prompt-header">
-              <h2>PROFILE RESOLVED & READY</h2>
-              <p id="review-profile-summary" class="prompt-detected">> Loading profile...</p>
-            </div>
-
-            <div class="summary-table">
-              <div class="s-row"><span class="s-k">TARGET COMBO</span><span id="sum-combo" class="s-v">--</span></div>
-              <div class="s-row"><span class="s-k">PEAK TARGET TEMP</span><span id="sum-peak" class="s-v">--°C</span></div>
-              <div class="s-row"><span class="s-k">RELEASE TEMP</span><span id="sum-release" class="s-v">--°C</span></div>
-              <div class="s-row"><span class="s-k">CYCLE DURATION</span><span id="sum-duration" class="s-v">6:00 min</span></div>
-            </div>
-
-            <div class="start-controls">
-              <label class="chk-wrap">
-                <input type="checkbox" id="chk-sim">
-                <span>SIMULATION MODE (DRY RUN WITHOUT REAL LOAD)</span>
-              </label>
-
-              <div class="action-buttons">
-                <button class="btn btn-back" onclick="goToWizardStep(3)">&lt; EDIT</button>
-                <button class="btn btn-start" onclick="startHeatingCycle()">[ START HEATING CYCLE ]</button>
+          <!-- Right Column: Visual illustration matching the step -->
+          <div class="right-pane">
+            <div id="wizard-visual-card" class="animation-card">
+              <!-- Animated diagram area -->
+              <div id="visual-diagram" class="visual-diagram">
+                <!-- SVG dynamically switched by current step -->
+                <svg id="visual-svg" width="220" height="220" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="1.5"></svg>
+              </div>
+              <div class="animation-caption">
+                <span id="visual-caption-title" class="caption-main">Socket AM4</span>
+                <span id="visual-caption-sub" class="caption-sub">Pins on processor require warming before cooler removal.</span>
               </div>
             </div>
           </div>
-
         </div>
       </section>
 
-      <!-- ========================================================= -->
-      <!-- SCREEN 2: ACTIVE STRESSER & REALTIME DYNAMIC NARRATION   -->
-      <!-- ========================================================= -->
-      <section id="view-active" class="screen">
-        <div class="active-dashboard">
-
-          <!-- Stage Banner & Realtime Copy -->
-          <div class="status-panel">
-            <div class="stage-line">
-              <span id="act-stage-tag" class="live-tag">STAGE 1/6: RAMP</span>
-              <span id="act-lock-status" class="lock-indicator">LOCKING TARGET</span>
+      <!-- ===================================================================== -->
+      <!-- VIEW 2: ACTIVE STRESSER & DYNAMIC TEMPERATURE LOCK                   -->
+      <!-- ===================================================================== -->
+      <section id="view-active" class="view-panel">
+        <div class="split-view">
+          <!-- Left Column: Current Stage, Copy & Guidance -->
+          <div class="left-pane">
+            <div class="pane-header">
+              <span id="act-stage-step" class="step-label">Stage 1 of 6</span>
+              <h1 id="act-stage-title" class="pane-title">Controlled Ramp</h1>
+              <p id="act-dynamic-copy" class="pane-desc">Gradually increasing CPU load to warm up the thermal paste.</p>
             </div>
-            <h1 id="act-stage-title" class="stage-title">CONTROLLED THERMAL RAMP</h1>
-            <p id="act-dynamic-copy" class="dynamic-copy">> Elevating CPU load to warm the silicon and coldplate.</p>
-            <div class="action-advisory">
-              <span class="adv-label">USER ACTION:</span>
-              <span id="act-user-action" class="adv-text">Do not touch the cooler yet. Let heat conduct uniformly.</span>
+
+            <!-- Current action instruction -->
+            <div class="action-box">
+              <span class="action-tag">Current Action</span>
+              <p id="act-user-action" class="action-text">Do not touch the cooler yet. Let heat spread evenly across the baseplate.</p>
+            </div>
+
+            <!-- Telemetry metrics -->
+            <div class="stats-grid">
+              <div class="stat-card">
+                <span class="stat-label">Current Temperature</span>
+                <span class="stat-val"><span id="act-cur-temp">--.-</span><span class="stat-unit">°C</span></span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-label">Target Temperature</span>
+                <span class="stat-val"><span id="act-tgt-temp">--.-</span><span class="stat-unit">°C</span></span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-label">CPU Load</span>
+                <span class="stat-val"><span id="act-load-val">0</span><span class="stat-unit">%</span></span>
+              </div>
+            </div>
+
+            <div class="pane-footer">
+              <button class="btn btn-danger-outline" onclick="abortCycle()">Stop Cycle</button>
             </div>
           </div>
 
-          <!-- Monochrome Numbers -->
-          <div class="metrics-row">
-            <div class="metric-block">
-              <span class="m-label">ACTUAL CPU TEMP</span>
-              <span class="m-num"><span id="act-cur-temp">--.-</span><span class="m-unit">°C</span></span>
-              <div class="meter-bar"><div id="bar-cur-temp" class="meter-fill" style="width: 30%;"></div></div>
-            </div>
-
-            <div class="metric-block">
-              <span class="m-label">TARGET TEMP LOCK</span>
-              <span class="m-num"><span id="act-tgt-temp">--.-</span><span class="m-unit">°C</span></span>
-              <div class="meter-bar"><div id="bar-tgt-temp" class="meter-fill" style="width: 45%;"></div></div>
-            </div>
-
-            <div class="metric-block">
-              <span class="m-label">DYNAMIC CPU LOAD</span>
-              <span class="m-num"><span id="act-load-val">0</span><span class="m-unit">%</span></span>
-              <div class="meter-bar"><div id="bar-load-val" class="meter-fill" style="width: 0%;"></div></div>
+          <!-- Right Column: Clean Telemetry Chart -->
+          <div class="right-pane">
+            <div class="chart-card">
+              <div class="chart-header">
+                <span class="chart-title">Temperature & Load Curve</span>
+                <div class="chart-legend">
+                  <span class="leg-item"><span class="leg-dash"></span> Target</span>
+                  <span class="leg-item"><span class="leg-line"></span> Actual</span>
+                </div>
+              </div>
+              <div class="canvas-container">
+                <canvas id="telemetry-canvas" width="600" height="260"></canvas>
+              </div>
             </div>
           </div>
-
-          <!-- ASCII / Minimalist Telemetry Graph -->
-          <div class="ascii-chart-box">
-            <div class="chart-label">> REALTIME TRACKING [TARGET (CYAN) / ACTUAL (WHITE) / LOAD (ORANGE)]</div>
-            <canvas id="clean-telemetry-canvas" width="900" height="180"></canvas>
-          </div>
-
-          <!-- Abort bar -->
-          <div class="bottom-ctrl-bar">
-            <span class="safety-label">[SAFETY CUTOFF: 85°C HARD LIMIT / +14°C RUNAWAY]</span>
-            <button class="btn btn-abort" onclick="abortCycle()">[ ABORT CYCLE ]</button>
-          </div>
-
         </div>
       </section>
 
-      <!-- ========================================================= -->
-      <!-- SCREEN 3: COMPLETION & TOUCH & TWIST PROTOCOL            -->
-      <!-- ========================================================= -->
-      <section id="view-completed" class="screen">
-        <div class="complete-box">
-          <div class="complete-header">
-            <div class="done-stamp">[ CYCLE COMPLETE ]</div>
-            <h2>THERMAL CONDITIONING SUCCESSFUL</h2>
-            <p>> Paste is fluid and softened. Safe window for cooler removal is active.</p>
+      <!-- ===================================================================== -->
+      <!-- VIEW 3: CYCLE COMPLETED & SHUTDOWN                                    -->
+      <!-- ===================================================================== -->
+      <section id="view-completed" class="view-panel">
+        <div class="split-view">
+          <!-- Left Column: Steps to remove cooler & Shutdown button -->
+          <div class="left-pane">
+            <div class="pane-header">
+              <span class="step-label tag-success">Complete</span>
+              <h1 class="pane-title">Thermal paste is ready</h1>
+              <p class="pane-desc">The paste has softened to its safe release temperature. Follow these removal steps while it is still warm.</p>
+            </div>
+
+            <div class="protocol-steps">
+              <div class="protocol-step">
+                <span class="proto-num">1</span>
+                <div class="proto-content">
+                  <strong>Shut down immediately</strong>
+                  <p>Click the shutdown button below to power down the PC before heat dissipates.</p>
+                </div>
+              </div>
+
+              <div class="protocol-step">
+                <span class="proto-num">2</span>
+                <div class="proto-content">
+                  <strong>Switch off power supply</strong>
+                  <p>Flip the PSU toggle switch to OFF and disconnect power.</p>
+                </div>
+              </div>
+
+              <div class="protocol-step">
+                <span class="proto-num">3</span>
+                <div class="proto-content">
+                  <strong>Loosen retention brackets</strong>
+                  <p>Unscrew mounting screws diagonally in small turns.</p>
+                </div>
+              </div>
+
+              <div class="protocol-step highlight">
+                <span class="proto-num">4</span>
+                <div class="proto-content">
+                  <strong>Gently twist first &mdash; never pull</strong>
+                  <p>Gently twist the cooler left and right to shear the paste. Lift only after it moves freely.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="pane-footer column-footer">
+              <button id="btn-full-poweroff" class="btn btn-danger-solid" onclick="triggerPoweroff()">
+                Shut Down Computer Now
+              </button>
+              <div id="shutdown-status-text" class="shutdown-note hidden"></div>
+              <button class="btn btn-ghost" onclick="restartToWizard()">&larr; Return to start</button>
+            </div>
           </div>
 
-          <!-- Touch and twist protocol -->
-          <div class="protocol-card">
-            <h3>COOLER REMOVAL PROTOCOL (EXECUTE WHILE WARM):</h3>
-            <ol class="protocol-list">
-              <li><strong>POWER OFF IMMEDIATELY:</strong> Click full shutdown below. Turn off PSU switch.</li>
-              <li><strong>UNLATCH RETENTION:</strong> Unscrew or unclip cooler bracket diagonally.</li>
-              <li><strong>TWIST FIRST, NEVER PULL:</strong> Gently rotate cooler 5° clockwise and counter-clockwise to shear the softened paste layer.</li>
-              <li><strong>LIFT OFF:</strong> Once paste suction is broken, gently lift cooler straight off CPU.</li>
-            </ol>
-          </div>
+          <!-- Right Column: Final summary stats & illustration -->
+          <div class="right-pane">
+            <div class="animation-card">
+              <div class="final-summary-stats">
+                <div class="f-metric">
+                  <span class="f-label">Peak Temperature</span>
+                  <span id="fin-peak" class="f-num">--.-°C</span>
+                </div>
+                <div class="f-metric">
+                  <span class="f-label">Final Temperature</span>
+                  <span id="fin-final" class="f-num">--.-°C</span>
+                </div>
+                <div class="f-metric">
+                  <span class="f-label">Total Time</span>
+                  <span id="fin-dur" class="f-num">06:00</span>
+                </div>
+              </div>
 
-          <div class="final-stats-row">
-            <div>PEAK TEMP: <strong id="fin-peak">--.-°C</strong></div>
-            <div>FINAL TOUCH TEMP: <strong id="fin-final">--.-°C</strong></div>
-            <div>TOTAL DURATION: <strong id="fin-dur">06:00</strong></div>
+              <!-- Twist animation illustration -->
+              <div class="twist-illustration">
+                <svg width="140" height="140" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <rect x="25" y="25" width="50" height="50" rx="4" stroke="currentColor" />
+                  <path d="M 15 50 A 35 35 0 0 1 85 50" stroke="#888" stroke-dasharray="3,3" />
+                  <path d="M 80 40 L 85 50 L 75 52" stroke="currentColor" fill="currentColor" />
+                  <path d="M 20 60 L 15 50 L 25 48" stroke="currentColor" fill="currentColor" />
+                </svg>
+                <span class="twist-label">Twist 5° left and right before lifting</span>
+              </div>
+            </div>
           </div>
-
-          <div class="shutdown-cta">
-            <button id="btn-full-poweroff" class="btn btn-poweroff" onclick="triggerPoweroff()">
-              [ FULL SHUTDOWN SYSTEM NOW ]
-            </button>
-            <div id="shutdown-status-text" class="shutdown-msg hidden"></div>
-          </div>
-
-          <button class="btn btn-outline" onclick="restartToWizard()" style="margin-top: 15px;">&lt; RETURN TO SETUP</button>
         </div>
       </section>
 

@@ -1,7 +1,7 @@
 /**
- * CPU HEATER · Terminal Client Script
- * Zero-gradient brutalist UI with autoscan hardware probe animation,
- * step-by-step interactive questionnaire, and clean telemetry chart.
+ * CPU HEATER · Clean Modern Frontend Controller
+ * Inter font, options on the left, clean B&W diagrams on the right,
+ * live stopwatch and closed-loop PID telemetry.
  */
 
 const state = {
@@ -15,9 +15,63 @@ const state = {
   pollTimer: null,
   peakTemp: 0,
   history: [],
-  scanFinished: false,
+  scanCompleted: false,
 };
 
+// SVG illustration paths for the right pane during wizard steps
+const illustrations = {
+  socket_pga: `
+    <rect x="40" y="40" width="120" height="120" rx="8" stroke="#ffffff" stroke-width="1.8" />
+    <rect x="65" y="65" width="70" height="70" rx="4" stroke="#71717a" stroke-width="1.5" />
+    <!-- Pin grid dots -->
+    <circle cx="50" cy="50" r="1.5" fill="#a1a1aa" />
+    <circle cx="50" cy="70" r="1.5" fill="#a1a1aa" />
+    <circle cx="50" cy="90" r="1.5" fill="#a1a1aa" />
+    <circle cx="50" cy="110" r="1.5" fill="#a1a1aa" />
+    <circle cx="50" cy="130" r="1.5" fill="#a1a1aa" />
+    <circle cx="50" cy="150" r="1.5" fill="#a1a1aa" />
+    <circle cx="150" cy="50" r="1.5" fill="#a1a1aa" />
+    <circle cx="150" cy="70" r="1.5" fill="#a1a1aa" />
+    <circle cx="150" cy="90" r="1.5" fill="#a1a1aa" />
+    <circle cx="150" cy="110" r="1.5" fill="#a1a1aa" />
+    <circle cx="150" cy="130" r="1.5" fill="#a1a1aa" />
+    <circle cx="150" cy="150" r="1.5" fill="#a1a1aa" />
+    <text x="100" y="105" text-anchor="middle" fill="#f4f4f5" font-size="12" font-family="Inter, sans-serif" font-weight="600">PGA SOCKET</text>
+  `,
+  socket_lga: `
+    <rect x="35" y="30" width="130" height="140" rx="10" stroke="#71717a" stroke-width="1.5" />
+    <!-- Clamping lever -->
+    <path d="M 165 40 L 175 40 L 175 160" stroke="#ffffff" stroke-width="2" />
+    <rect x="55" y="50" width="90" height="100" rx="6" stroke="#ffffff" stroke-width="1.8" />
+    <text x="100" y="105" text-anchor="middle" fill="#f4f4f5" font-size="12" font-family="Inter, sans-serif" font-weight="600">LGA CLAMP</text>
+  `,
+  socket_hedt: `
+    <rect x="25" y="45" width="150" height="110" rx="8" stroke="#ffffff" stroke-width="2" />
+    <rect x="45" y="60" width="110" height="80" rx="4" stroke="#71717a" stroke-width="1.5" />
+    <text x="100" y="105" text-anchor="middle" fill="#f4f4f5" font-size="12" font-family="Inter, sans-serif" font-weight="600">HEDT COLDPLATE</text>
+  `,
+  cooler_flat: `
+    <rect x="45" y="70" width="110" height="60" rx="4" stroke="#ffffff" stroke-width="1.8" />
+    <line x1="45" y1="130" x2="155" y2="130" stroke="#ffffff" stroke-width="3" />
+    <text x="100" y="105" text-anchor="middle" fill="#f4f4f5" font-size="12" font-family="Inter, sans-serif" font-weight="600">SOLID BASE</text>
+  `,
+  cooler_hdt: `
+    <rect x="45" y="70" width="110" height="60" rx="4" stroke="#71717a" stroke-width="1.5" />
+    <!-- 4 Direct pipes -->
+    <line x1="60" y1="50" x2="60" y2="130" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
+    <line x1="85" y1="50" x2="85" y2="130" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
+    <line x1="115" y1="50" x2="115" y2="130" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
+    <line x1="140" y1="50" x2="140" y2="130" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
+    <text x="100" y="150" text-anchor="middle" fill="#a1a1aa" font-size="11" font-family="Inter, sans-serif">EXPOSED HEATPIPES</text>
+  `,
+  paste_tim: `
+    <rect x="50" y="80" width="100" height="40" rx="4" stroke="#71717a" stroke-width="1.5" />
+    <path d="M 60 100 Q 100 85 140 100" stroke="#ffffff" stroke-width="2.5" fill="none" />
+    <text x="100" y="145" text-anchor="middle" fill="#f4f4f5" font-size="12" font-family="Inter, sans-serif" font-weight="600">THERMAL INTERFACE</text>
+  `,
+};
+
+// DOM references
 const dom = {
   // Screens
   viewAutoscan: document.getElementById("view-autoscan"),
@@ -25,40 +79,44 @@ const dom = {
   viewActive: document.getElementById("view-active"),
   viewCompleted: document.getElementById("view-completed"),
 
-  // Topbar
+  // Top header
   stopwatchContainer: document.getElementById("stopwatch-container"),
   swTime: document.getElementById("sw-time"),
   swTotal: document.getElementById("sw-total"),
   swStageBadge: document.getElementById("sw-stage-badge"),
-  hwSensorPill: document.getElementById("hw-sensor-pill"),
+  swRemaining: document.getElementById("sw-remaining"),
+  hwSensorTemp: document.getElementById("hw-sensor-temp"),
 
-  // Autoscan
-  scanLogFeed: document.getElementById("scan-log-feed"),
-  scanFill: document.getElementById("scan-progress-fill"),
+  // Scan items
+  scanItemCpu: document.getElementById("scan-item-cpu"),
+  scanItemSocket: document.getElementById("scan-item-socket"),
+  scanItemSensor: document.getElementById("scan-item-sensor"),
+  scanValCpu: document.getElementById("scan-val-cpu"),
+  scanValSocket: document.getElementById("scan-val-socket"),
+  scanValSensor: document.getElementById("scan-val-sensor"),
+  scanAnimStatus: document.getElementById("scan-anim-status"),
 
   // Wizard
-  wizStepTag: document.getElementById("wiz-step-tag"),
-  promptSocketDetected: document.getElementById("prompt-socket-detected"),
-  reviewProfileSummary: document.getElementById("review-profile-summary"),
-  sumCombo: document.getElementById("sum-combo"),
-  sumPeak: document.getElementById("sum-peak"),
-  sumRelease: document.getElementById("sum-release"),
+  wizSocketDetectedNote: document.getElementById("wiz-socket-detected-note"),
+  visualSvg: document.getElementById("visual-svg"),
+  visualCaptionTitle: document.getElementById("visual-caption-title"),
+  visualCaptionSub: document.getElementById("visual-caption-sub"),
+  sumProfileName: document.getElementById("sum-profile-name"),
+  sumPeakTemp: document.getElementById("sum-peak-temp"),
+  sumReleaseTemp: document.getElementById("sum-release-temp"),
   sumDuration: document.getElementById("sum-duration"),
+  sumDesc: document.getElementById("sum-desc"),
   chkSim: document.getElementById("chk-sim"),
 
   // Active
-  actStageTag: document.getElementById("act-stage-tag"),
-  actLockStatus: document.getElementById("act-lock-status"),
+  actStageStep: document.getElementById("act-stage-step"),
   actStageTitle: document.getElementById("act-stage-title"),
   actDynamicCopy: document.getElementById("act-dynamic-copy"),
   actUserAction: document.getElementById("act-user-action"),
   actCurTemp: document.getElementById("act-cur-temp"),
   actTgtTemp: document.getElementById("act-tgt-temp"),
   actLoadVal: document.getElementById("act-load-val"),
-  barCurTemp: document.getElementById("bar-cur-temp"),
-  barTgtTemp: document.getElementById("bar-tgt-temp"),
-  barLoadVal: document.getElementById("bar-load-val"),
-  canvas: document.getElementById("clean-telemetry-canvas"),
+  telemetryCanvas: document.getElementById("telemetry-canvas"),
 
   // Completed
   finPeak: document.getElementById("fin-peak"),
@@ -68,121 +126,77 @@ const dom = {
 };
 
 // =============================================================================
-// INIT & KEYBOARD CONTROLS
+// INITIALIZATION
 // =============================================================================
 
 document.addEventListener("DOMContentLoaded", () => {
-  setupKeyboardShortcuts();
-  runAutoscanSequence();
+  runAutoscan();
 });
 
-function setupKeyboardShortcuts() {
-  window.addEventListener("keydown", (e) => {
-    // If on scan screen, Enter skips
-    if (!state.scanFinished && dom.viewAutoscan.classList.contains("active")) {
-      if (e.key === "Enter" || e.key === " ") {
-        completeScan();
-        return;
-      }
-    }
-
-    // Number hotkeys for wizard options [1, 2, 3]
-    if (dom.viewWizard.classList.contains("active")) {
-      const activeStep = document.querySelector(".step-pane.active");
-      if (activeStep) {
-        const id = activeStep.id;
-        if (id === "step-pane-1") {
-          if (e.key === "1") selectSocket("pga");
-          if (e.key === "2") selectSocket("lga");
-          if (e.key === "3") selectSocket("hedt");
-        } else if (id === "step-pane-2") {
-          if (e.key === "1") selectCooler("flat");
-          if (e.key === "2") selectCooler("hdt");
-          if (e.key === "3") selectCooler("fullcover");
-        } else if (id === "step-pane-3") {
-          if (e.key === "1") selectPaste("low");
-          if (e.key === "2") selectPaste("high");
-          if (e.key === "3") selectPaste("pcm");
-        } else if (id === "step-pane-4") {
-          if (e.key === "Enter") startHeatingCycle();
-        }
-      }
-    }
-  });
-}
-
 // =============================================================================
-// SCREEN 0: AUTOSCAN PROBE ANIMATION
+// SCREEN 0: AUTOSCAN WITH CLEAN B&W ANIMATION
 // =============================================================================
 
-async function runAutoscanSequence() {
-  const logs = [
-    { text: "> Probing CPU registers & /proc/cpuinfo...", pct: 15, delay: 250 },
-    { text: "> Reading socket physical topology...", pct: 35, delay: 350 },
-    { text: "> Inspecting Linux /sys/class/hwmon thermal controllers...", pct: 60, delay: 300 },
-    { text: "> Querying k10temp, coretemp, and ACPI zones...", pct: 85, delay: 300 },
-    { text: "> Hardware probe complete.", pct: 100, delay: 200 },
-  ];
-
-  let fetchPromise = fetch("/api/detect").then((r) => r.json()).catch(() => null);
-
-  for (let step of logs) {
-    if (state.scanFinished) break;
-    appendLog(step.text);
-    dom.scanFill.style.width = `${step.pct}%`;
-    await sleep(step.delay);
-  }
-
-  const data = await fetchPromise;
-  if (data) {
+async function runAutoscan() {
+  try {
+    const res = await fetch("/api/detect");
+    const data = await res.json();
     state.detectData = data;
+
     const cpu = data.cpu || {};
     const sock = cpu.socket || {};
     const sensor = data.sensor || {};
     const temp = data.sensor_temp || 30.0;
 
-    appendLog(`> DETECTED CPU: ${cpu.model || "Unknown"} (${cpu.cores}C/${cpu.threads}T)`, "log-highlight");
-    appendLog(`> DETECTED SOCKET: ${sock.socket || "Unknown"} [${(sock.class || "PGA").toUpperCase()}]`, "log-highlight");
-    if (sock.class === "pga") {
-      appendLog(`> WARNING: PGA socket detected! Cold paste pull-out hazard active.`, "log-warn");
-    }
-    appendLog(`> ACTIVE SENSOR: ${sensor.name} @ ${temp.toFixed(1)}°C`, "log-highlight");
+    // Step 1: Reveal CPU
+    await sleep(400);
+    dom.scanValCpu.textContent = `${cpu.model || "Unknown Processor"} (${cpu.cores}C / ${cpu.threads}T)`;
+    dom.scanItemCpu.classList.remove("pending");
+    dom.scanItemCpu.classList.add("done");
 
-    dom.hwSensorPill.textContent = `${sensor.name}: ${temp.toFixed(1)}°C`;
+    // Step 2: Reveal Socket
+    await sleep(400);
+    const sockName = sock.socket ? `${sock.socket} (${(sock.class || "PGA").toUpperCase()})` : "AMD AM4 (PGA)";
+    dom.scanValSocket.textContent = sockName;
+    dom.scanItemSocket.classList.remove("pending");
+    dom.scanItemSocket.classList.add("done");
+
+    // Step 3: Reveal Sensor
+    await sleep(400);
+    dom.scanValSensor.textContent = `${sensor.name || "Hardware Sensor"} (${temp.toFixed(1)}°C)`;
+    dom.scanItemSensor.classList.remove("pending");
+    dom.scanItemSensor.classList.add("done");
+    dom.hwSensorTemp.textContent = `${temp.toFixed(1)}°C`;
+
+    dom.scanAnimStatus.textContent = "Hardware detected";
 
     // Preselect detected socket
     const sockClass = (sock.class || "pga").toLowerCase();
     if (["pga", "lga", "hedt"].includes(sockClass)) {
       state.socket = sockClass;
-      dom.promptSocketDetected.textContent = `> Auto-detected: ${cpu.model} sits in an ${sock.socket} (${sock.class.toUpperCase()}) socket.`;
+      dom.wizSocketDetectedNote.textContent = `Auto-detected ${cpu.model} on ${sock.socket} (${sockClass.toUpperCase()}).`;
     }
+
+    await sleep(600);
+    completeScan();
+  } catch (err) {
+    console.error("Autoscan error:", err);
+    completeScan();
   }
-
-  await sleep(600);
-  completeScan();
-}
-
-function appendLog(line, className = "") {
-  const el = document.createElement("div");
-  el.className = "log-line" + (className ? " " + className : "");
-  el.textContent = line;
-  dom.scanLogFeed.appendChild(el);
-  dom.scanLogFeed.scrollTop = dom.scanLogFeed.scrollHeight;
 }
 
 function completeScan() {
-  if (state.scanFinished) return;
-  state.scanFinished = true;
-  switchScreen("view-wizard");
+  if (state.scanCompleted) return;
+  state.scanCompleted = true;
+  switchView("view-wizard");
   goToWizardStep(1);
 }
 
 // =============================================================================
-// SCREEN 1: STEP-BY-STEP QUESTIONNAIRE
+// SCREEN 1: STEP-BY-STEP QUESTIONNAIRE (OPTIONS LEFT, GRAPHIC RIGHT)
 // =============================================================================
 
 function goToWizardStep(step) {
-  dom.wizStepTag.textContent = `STEP ${step} OF 3`;
   for (let i = 1; i <= 4; i++) {
     const pane = document.getElementById(`step-pane-${i}`);
     if (pane) {
@@ -191,25 +205,63 @@ function goToWizardStep(step) {
     }
   }
 
+  // Update right-side B&W illustration based on active step
+  updateWizardIllustration(step);
+
   if (step === 4) {
-    dom.wizStepTag.textContent = `CONFIRMATION`;
     resolveAndShowSummary();
+  }
+}
+
+function updateWizardIllustration(step) {
+  if (step === 1) {
+    dom.visualSvg.innerHTML = illustrations.socket_pga;
+    dom.visualCaptionTitle.textContent = "Socket AM4 (PGA)";
+    dom.visualCaptionSub.textContent = "Pins are on the processor. Warming is required to prevent pin pull-out damage.";
+  } else if (step === 2) {
+    dom.visualSvg.innerHTML = illustrations.cooler_flat;
+    dom.visualCaptionTitle.textContent = "Cooler Coldplate";
+    dom.visualCaptionSub.textContent = "Baseplate conducts heat into the thermal paste layer to break suction.";
+  } else if (step === 3) {
+    dom.visualSvg.innerHTML = illustrations.paste_tim;
+    dom.visualCaptionTitle.textContent = "Thermal Interface Material";
+    dom.visualCaptionSub.textContent = "Viscosity drops as temperature rises, reaching its liquid state.";
+  } else if (step === 4) {
+    dom.visualSvg.innerHTML = illustrations.socket_pga;
+    dom.visualCaptionTitle.textContent = "Ready to Begin";
+    dom.visualCaptionSub.textContent = "The cycle will modulate load and guide you when it is safe to twist and remove.";
   }
 }
 
 function selectSocket(sock) {
   state.socket = sock;
+  highlightChoice("step-pane-1", sock);
+  if (sock === "pga") dom.visualSvg.innerHTML = illustrations.socket_pga;
+  else if (sock === "lga") dom.visualSvg.innerHTML = illustrations.socket_lga;
+  else if (sock === "hedt") dom.visualSvg.innerHTML = illustrations.socket_hedt;
   goToWizardStep(2);
 }
 
 function selectCooler(cooler) {
   state.cooler = cooler;
+  highlightChoice("step-pane-2", cooler);
+  if (cooler === "flat") dom.visualSvg.innerHTML = illustrations.cooler_flat;
+  else if (cooler === "hdt") dom.visualSvg.innerHTML = illustrations.cooler_hdt;
   goToWizardStep(3);
 }
 
 function selectPaste(paste) {
   state.paste = paste;
+  highlightChoice("step-pane-3", paste);
   goToWizardStep(4);
+}
+
+function highlightChoice(paneId, val) {
+  const pane = document.getElementById(paneId);
+  if (!pane) return;
+  pane.querySelectorAll(".choice-card").forEach((btn) => {
+    btn.classList.remove("selected");
+  });
 }
 
 async function resolveAndShowSummary() {
@@ -229,11 +281,11 @@ async function resolveAndShowSummary() {
 
     const curve = data.curve;
     if (curve) {
-      dom.reviewProfileSummary.textContent = `> Resolved Profile: Combo #${curve.id} — ${curve.name}`;
-      dom.sumCombo.textContent = `Combo #${curve.id} (${curve.name})`;
-      dom.sumPeak.textContent = `${Math.max(...curve.temps)}°C`;
-      dom.sumRelease.textContent = `${curve.temps[curve.temps.length - 1]}°C (Touch & Twist)`;
+      dom.sumProfileName.textContent = `Combo #${curve.id} — ${curve.name}`;
+      dom.sumPeakTemp.textContent = `${Math.max(...curve.temps)}°C`;
+      dom.sumReleaseTemp.textContent = `${curve.temps[curve.temps.length - 1]}°C`;
       dom.sumDuration.textContent = formatTime(curve.duration);
+      dom.sumDesc.textContent = `Calculated 6-stage trajectory for ${curve.name}.`;
     }
   } catch (err) {
     console.error("Resolve error:", err);
@@ -262,8 +314,7 @@ async function startHeatingCycle() {
     state.peakTemp = 0;
     state.history = [];
 
-    // Switch screen to active
-    switchScreen("view-active");
+    switchView("view-active");
     dom.stopwatchContainer.classList.remove("hidden");
 
     startTelemetryPolling();
@@ -288,38 +339,29 @@ async function pollTelemetry() {
       state.peakTemp = st.current_temp;
     }
 
-    // Top Stopwatch
+    // Top Header Stopwatch
     dom.swTime.textContent = formatTime(st.elapsed);
     dom.swTotal.textContent = formatTime(st.duration);
-    dom.swStageBadge.textContent = `[${(st.stage || "HOLD").toUpperCase()}]`;
-    dom.hwSensorPill.textContent = `SENSOR: ${st.current_temp.toFixed(1)}°C`;
+    dom.swStageBadge.textContent = st.stage || "Hold";
+    dom.swRemaining.textContent = `${formatTime(st.remaining)} left`;
+    dom.hwSensorTemp.textContent = `${st.current_temp.toFixed(1)}°C`;
 
-    // Active Dashboard Texts
-    dom.actStageTag.textContent = `STAGE ${st.stage_idx || 1}/6: ${(st.stage || "").toUpperCase()}`;
-    dom.actLockStatus.textContent = Math.abs(st.temp_error) <= 1.2 ? "[ TARGET LOCKED ]" : "[ REGULATING LOAD ]";
-    dom.actLockStatus.style.color = Math.abs(st.temp_error) <= 1.2 ? "var(--accent-green)" : "var(--accent-cyan)";
-
-    dom.actStageTitle.textContent = (st.stage_title || "THERMAL REGULATION").toUpperCase();
-    dom.actDynamicCopy.textContent = `> ${st.dynamic_status || "Modulating thermal load..."}`;
+    // Active Dashboard Left Pane
+    dom.actStageStep.textContent = `Stage ${st.stage_idx || 1} of 6 \u00b7 ${st.stage}`;
+    dom.actStageTitle.textContent = st.stage_title || "Thermal Regulation";
+    dom.actDynamicCopy.textContent = st.dynamic_status || "Modulating thermal load...";
     dom.actUserAction.textContent = st.stage_action || "Keep cooler secured.";
 
-    // Metric digits
+    // Metric Digits
     dom.actCurTemp.textContent = st.current_temp.toFixed(1);
     dom.actTgtTemp.textContent = st.target_temp.toFixed(1);
     dom.actLoadVal.textContent = st.load_pct.toFixed(0);
 
-    // Meters
-    const curPct = Math.min(100, Math.max(0, ((st.current_temp - 20) / 65) * 100));
-    const tgtPct = Math.min(100, Math.max(0, ((st.target_temp - 20) / 65) * 100));
-    dom.barCurTemp.style.width = `${curPct}%`;
-    dom.barTgtTemp.style.width = `${tgtPct}%`;
-    dom.barLoadVal.style.width = `${st.load_pct}%`;
-
-    // Draw clean chart
+    // Render Canvas Chart
     state.history = st.history || [];
-    drawCleanChart(dom.canvas, st, state.history);
+    drawCleanChart(dom.telemetryCanvas, st, state.history);
 
-    // End conditions
+    // Completion or Abort
     if (st.finished) {
       clearInterval(state.pollTimer);
       state.pollTimer = null;
@@ -327,16 +369,16 @@ async function pollTelemetry() {
     } else if (st.aborted) {
       clearInterval(state.pollTimer);
       state.pollTimer = null;
-      alert(`Heating cycle aborted: ${st.abort_reason || "User stopped"}`);
+      alert(`Heating cycle stopped: ${st.abort_reason || "User aborted"}`);
       restartToWizard();
     }
   } catch (err) {
-    console.error("Telemetry error:", err);
+    console.error("Telemetry poll error:", err);
   }
 }
 
 async function abortCycle() {
-  if (confirm("ABORT HEATING CYCLE? CPU load will instantly drop to 0%.")) {
+  if (confirm("Stop heating cycle? CPU load will immediately drop to 0%.")) {
     try {
       await fetch("/api/stop", { method: "POST" });
       if (state.pollTimer) clearInterval(state.pollTimer);
@@ -348,7 +390,7 @@ async function abortCycle() {
 }
 
 function handleFinished(st) {
-  switchScreen("view-completed");
+  switchView("view-completed");
   dom.stopwatchContainer.classList.add("hidden");
 
   dom.finPeak.textContent = `${state.peakTemp.toFixed(1)}°C`;
@@ -361,12 +403,12 @@ function handleFinished(st) {
 // =============================================================================
 
 async function triggerPoweroff() {
-  if (!confirm("EXECUTE IMMEDIATE SYSTEM SHUTDOWN NOW?\nSave all other work before proceeding.")) {
+  if (!confirm("Are you ready to shut down the computer now?\nSave any other work before proceeding.")) {
     return;
   }
 
   dom.shutdownStatusText.classList.remove("hidden");
-  dom.shutdownStatusText.textContent = "> Sending system poweroff command (systemctl poweroff / shutdown)...";
+  dom.shutdownStatusText.textContent = "Shutting down system...";
 
   try {
     const res = await fetch("/api/shutdown", {
@@ -375,14 +417,14 @@ async function triggerPoweroff() {
       body: JSON.stringify({ dry_run: false }),
     });
     const data = await res.json();
-    dom.shutdownStatusText.textContent = `> ${data.message || "Poweroff signal sent."}`;
+    dom.shutdownStatusText.textContent = data.message || "Poweroff signal sent.";
   } catch (err) {
-    dom.shutdownStatusText.textContent = `> Poweroff error: ${err.message}`;
+    dom.shutdownStatusText.textContent = `Shutdown error: ${err.message}`;
   }
 }
 
 // =============================================================================
-// BRUTALIST MONOCHROME TELEMETRY CHART
+// CLEAN B&W CANVAS CHART
 // =============================================================================
 
 function drawCleanChart(canvas, st, history) {
@@ -396,7 +438,7 @@ function drawCleanChart(canvas, st, history) {
 
   const w = rect.width;
   const h = rect.height;
-  const pad = { top: 15, right: 25, bottom: 20, left: 35 };
+  const pad = { top: 15, right: 20, bottom: 25, left: 35 };
   const plotW = w - pad.left - pad.right;
   const plotH = h - pad.top - pad.bottom;
 
@@ -410,7 +452,7 @@ function drawCleanChart(canvas, st, history) {
   const toY = (temp) => pad.top + plotH - ((temp - minTemp) / (maxTemp - minTemp)) * plotH;
 
   // Horizontal Grid Lines
-  ctx.strokeStyle = "#1a1a1a";
+  ctx.strokeStyle = "#27272a";
   ctx.lineWidth = 1;
   for (let t = 30; t <= 70; t += 20) {
     const y = toY(t);
@@ -419,13 +461,13 @@ function drawCleanChart(canvas, st, history) {
     ctx.lineTo(w - pad.right, y);
     ctx.stroke();
 
-    ctx.fillStyle = "#444444";
-    ctx.font = "10px monospace";
+    ctx.fillStyle = "#71717a";
+    ctx.font = "11px 'JetBrains Mono', monospace";
     ctx.textAlign = "right";
-    ctx.fillText(`${t}°C`, pad.left - 4, y + 3);
+    ctx.fillText(`${t}°C`, pad.left - 6, y + 4);
   }
 
-  // Target Curve (Cyan Dashed)
+  // Target Curve (Subtle dashed line)
   const curve = st.curve;
   if (curve && curve.times && curve.times.length) {
     ctx.beginPath();
@@ -433,24 +475,11 @@ function drawCleanChart(canvas, st, history) {
     for (let i = 1; i < curve.times.length; i++) {
       ctx.lineTo(toX(curve.times[i]), toY(curve.temps[i]));
     }
-    ctx.strokeStyle = "#00e5ff";
+    ctx.strokeStyle = "#71717a";
     ctx.lineWidth = 1.5;
     ctx.setLineDash([4, 4]);
     ctx.stroke();
     ctx.setLineDash([]);
-  }
-
-  // Load Bars (Orange outline / low alpha)
-  if (history.length > 1) {
-    ctx.beginPath();
-    ctx.moveTo(toX(history[0].t), pad.top + plotH);
-    for (let i = 0; i < history.length; i++) {
-      const loadH = (history[i].load / 100) * (plotH * 0.35);
-      ctx.lineTo(toX(history[i].t), pad.top + plotH - loadH);
-    }
-    ctx.lineTo(toX(history[history.length - 1].t), pad.top + plotH);
-    ctx.fillStyle = "rgba(255, 85, 0, 0.15)";
-    ctx.fill();
   }
 
   // Actual Temperature Line (Solid Crisp White)
@@ -464,7 +493,7 @@ function drawCleanChart(canvas, st, history) {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Cursor point
+    // Current point
     const cur = history[history.length - 1];
     ctx.beginPath();
     ctx.arc(toX(cur.t), toY(cur.temp), 3.5, 0, Math.PI * 2);
@@ -472,12 +501,12 @@ function drawCleanChart(canvas, st, history) {
     ctx.fill();
   }
 
-  // Vertical Scrubber Line
+  // Scrubber Line
   const scrubX = toX(st.elapsed);
   ctx.beginPath();
   ctx.moveTo(scrubX, pad.top);
   ctx.lineTo(scrubX, pad.top + plotH);
-  ctx.strokeStyle = "#333333";
+  ctx.strokeStyle = "#3f3f46";
   ctx.lineWidth = 1;
   ctx.stroke();
 }
@@ -486,14 +515,14 @@ function drawCleanChart(canvas, st, history) {
 // HELPERS
 // =============================================================================
 
-function switchScreen(screenId) {
-  document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
-  const target = document.getElementById(screenId);
+function switchView(viewId) {
+  document.querySelectorAll(".view-panel").forEach((v) => v.classList.remove("active"));
+  const target = document.getElementById(viewId);
   if (target) target.classList.add("active");
 }
 
 function restartToWizard() {
-  switchScreen("view-wizard");
+  switchView("view-wizard");
   dom.stopwatchContainer.classList.add("hidden");
   goToWizardStep(1);
 }
