@@ -9,12 +9,12 @@ const SERVER_PORT = 8080;
 
 function startBackend() {
   const isWin = process.platform === 'win32';
-  const pyCmd = isWin ? 'python' : 'python3';
+  const pyCmd = isWin ? 'python' : '/home/linuxbrew/.linuxbrew/bin/python3';
   const mainScript = path.join(__dirname, 'main.py');
 
   pythonProcess = spawn(pyCmd, [mainScript, '--no-browser', '--port', String(SERVER_PORT)], {
     cwd: __dirname,
-    stdio: 'ignore',
+    stdio: 'inherit',
     windowsHide: true,
   });
 
