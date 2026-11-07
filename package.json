@@ -1,0 +1,53 @@
+{
+  "name": "cpu-heater",
+  "version": "1.0.0",
+  "description": "Desktop Fullscreen-Locked CPU Thermal Paste Conditioner & Release Tool for Linux and Windows",
+  "main": "electron-main.js",
+  "scripts": {
+    "start": "electron .",
+    "desktop": "electron .",
+    "pack": "electron-builder --dir",
+    "dist:linux": "electron-builder --linux AppImage",
+    "dist:win": "electron-builder --win nsis",
+    "test": "python3 -m unittest discover -s tests -v"
+  },
+  "keywords": [
+    "cpu",
+    "heater",
+    "thermal-paste",
+    "am4",
+    "pga",
+    "cooler-removal",
+    "stresser"
+  ],
+  "author": "Antigravity",
+  "license": "MIT",
+  "build": {
+    "appId": "com.cpuheater.app",
+    "productName": "CPU Heater",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron-main.js",
+      "main.py",
+      "heater/**/*",
+      "web/**/*",
+      "data/**/*",
+      "assets/**/*"
+    ],
+    "linux": {
+      "target": ["AppImage"],
+      "category": "System",
+      "icon": "assets/icon.svg"
+    },
+    "win": {
+      "target": ["nsis", "portable"],
+      "icon": "assets/icon.svg"
+    }
+  },
+  "devDependencies": {
+    "electron": "^24.22.2",
+    "electron-builder": "^26.18.0"
+  }
+}

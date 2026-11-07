@@ -1,9 +1,11 @@
-"""Hardware detection: CPU identity, socket class and CPU temperature sensor."""
+"""Hardware detection: CPU identity, socket class and CPU temperature sensor on Linux and Windows."""
 from __future__ import annotations
 
 import glob
 import os
+import platform
 import re
+import subprocess
 from dataclasses import dataclass
 
 
@@ -28,7 +30,53 @@ def clean_model(name: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 
-def cpu_info() -> dict:
+def _cpu_info_windows() -> dict:
+    model = ""
+    vendor = "Unknown"
+    threads = os.cpu_count() or 1
+    cores = threads
+
+    # Query WMI via powershell or wmic
+    try:
+        cmd = [
+            "powershell",
+            "-NoProfile",
+            "-Command",
+            "Get-CimInstance Win32_Processor | Select-Object -Property Name, Manufacturer, NumberOfCores, NumberOfLogicalProcessors | ConvertTo-Json",
+        ]
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+        if res.returncode == 0 and res.stdout.strip():
+            import json
+            data = json.loads(res.stdout)
+            if isinstance(data, list):
+                data = data[0]
+            model = data.get("Name", "")
+            vendor_raw = data.get("Manufacturer", "")
+            if "AMD" in vendor_raw or "Advanced Micro" in vendor_raw:
+                vendor = "AMD"
+            elif "Intel" in vendor_raw:
+                vendor = "Intel"
+            else:
+                vendor = vendor_raw
+            cores = data.get("NumberOfCores") or threads
+            threads = data.get("NumberOfLogicalProcessors") or threads
+    except Exception:
+        # Fallback to environment variables
+        model = os.environ.get("PROCESSOR_IDENTIFIER", "")
+
+    name = clean_model(model) or platform.processor() or "Unknown CPU"
+    return {
+        "model": name,
+        "raw_model": model,
+        "vendor": vendor,
+        "family": None,
+        "threads": threads,
+        "cores": cores,
+        "socket": detect_socket(name, vendor, None),
+    }
+
+
+def _cpu_info_linux() -> dict:
     model = vendor = ""
     family = None
     cores: set[tuple[str | None, str | None]] = set()
@@ -62,6 +110,12 @@ def cpu_info() -> dict:
         "cores": len(cores) or threads,
         "socket": detect_socket(name, vendor_name, family),
     }
+
+
+def cpu_info() -> dict:
+    if platform.system() == "Windows":
+        return _cpu_info_windows()
+    return _cpu_info_linux()
 
 
 def _sock(cls: str, socket: str, confidence: str, reason: str) -> dict:
@@ -166,6 +220,37 @@ class Sensor:
         return {"name": self.name, "simulated": False}
 
 
+class WindowsSensor:
+    """Windows WMI / OpenHardwareMonitor / LibreHardwareMonitor sensor query."""
+
+    def __init__(self, name: str):
+        self.name = name
+
+    def read(self) -> float:
+        # Try MSAcpi_ThermalZoneTemperature via powershell
+        cmd = [
+            "powershell",
+            "-NoProfile",
+            "-Command",
+            "(Get-CimInstance -Namespace root/wmi -ClassName MSAcpi_ThermalZoneTemperature -ErrorAction SilentlyContinue | Select-Object -ExpandProperty CurrentTemperature | Measure-Object -Maximum).Maximum",
+        ]
+        try:
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=2)
+            if res.returncode == 0 and res.stdout.strip():
+                # Kelvin * 10
+                kelvin_10 = float(res.stdout.strip())
+                if kelvin_10 > 2000:
+                    celsius = (kelvin_10 - 2732) / 10.0
+                    if 15.0 < celsius < 120.0:
+                        return celsius
+        except Exception:
+            pass
+        raise OSError("Windows sensor read failed")
+
+    def describe(self) -> dict:
+        return {"name": self.name, "simulated": False}
+
+
 def _hwmons() -> list[tuple[str, dict[str, str]]]:
     out = []
     for d in sorted(glob.glob("/sys/class/hwmon/hwmon*")):
@@ -185,7 +270,15 @@ def _plausible(sensor: Sensor) -> bool:
         return False
 
 
-def find_sensor() -> Sensor | None:
+def find_sensor():
+    if platform.system() == "Windows":
+        try:
+            ws = WindowsSensor("WMI ThermalZone")
+            ws.read()
+            return ws
+        except Exception:
+            return None
+
     candidates: list[Sensor] = []
     hw = _hwmons()
     for name, temps in hw:
