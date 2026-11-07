@@ -1,7 +1,6 @@
 /**
- * CPU HEATER · Clean Modern Frontend Controller
- * Inter font, options on the left, clean B&W diagrams on the right,
- * live stopwatch and closed-loop PID telemetry.
+ * CPU HEATER · Clean Frontend Controller
+ * Socket is auto-detected directly. User only selects cooler base and thermal paste.
  */
 
 const state = {
@@ -18,56 +17,29 @@ const state = {
   scanCompleted: false,
 };
 
-// SVG illustration paths for the right pane during wizard steps
 const illustrations = {
-  socket_pga: `
-    <rect x="40" y="40" width="120" height="120" rx="8" stroke="#ffffff" stroke-width="1.8" />
-    <rect x="65" y="65" width="70" height="70" rx="4" stroke="#71717a" stroke-width="1.5" />
-    <!-- Pin grid dots -->
-    <circle cx="50" cy="50" r="1.5" fill="#a1a1aa" />
-    <circle cx="50" cy="70" r="1.5" fill="#a1a1aa" />
-    <circle cx="50" cy="90" r="1.5" fill="#a1a1aa" />
-    <circle cx="50" cy="110" r="1.5" fill="#a1a1aa" />
-    <circle cx="50" cy="130" r="1.5" fill="#a1a1aa" />
-    <circle cx="50" cy="150" r="1.5" fill="#a1a1aa" />
-    <circle cx="150" cy="50" r="1.5" fill="#a1a1aa" />
-    <circle cx="150" cy="70" r="1.5" fill="#a1a1aa" />
-    <circle cx="150" cy="90" r="1.5" fill="#a1a1aa" />
-    <circle cx="150" cy="110" r="1.5" fill="#a1a1aa" />
-    <circle cx="150" cy="130" r="1.5" fill="#a1a1aa" />
-    <circle cx="150" cy="150" r="1.5" fill="#a1a1aa" />
-    <text x="100" y="105" text-anchor="middle" fill="#f4f4f5" font-size="12" font-family="Inter, sans-serif" font-weight="600">PGA SOCKET</text>
-  `,
-  socket_lga: `
-    <rect x="35" y="30" width="130" height="140" rx="10" stroke="#71717a" stroke-width="1.5" />
-    <!-- Clamping lever -->
-    <path d="M 165 40 L 175 40 L 175 160" stroke="#ffffff" stroke-width="2" />
-    <rect x="55" y="50" width="90" height="100" rx="6" stroke="#ffffff" stroke-width="1.8" />
-    <text x="100" y="105" text-anchor="middle" fill="#f4f4f5" font-size="12" font-family="Inter, sans-serif" font-weight="600">LGA CLAMP</text>
-  `,
-  socket_hedt: `
-    <rect x="25" y="45" width="150" height="110" rx="8" stroke="#ffffff" stroke-width="2" />
-    <rect x="45" y="60" width="110" height="80" rx="4" stroke="#71717a" stroke-width="1.5" />
-    <text x="100" y="105" text-anchor="middle" fill="#f4f4f5" font-size="12" font-family="Inter, sans-serif" font-weight="600">HEDT COLDPLATE</text>
-  `,
   cooler_flat: `
     <rect x="45" y="70" width="110" height="60" rx="4" stroke="#ffffff" stroke-width="1.8" />
     <line x1="45" y1="130" x2="155" y2="130" stroke="#ffffff" stroke-width="3" />
-    <text x="100" y="105" text-anchor="middle" fill="#f4f4f5" font-size="12" font-family="Inter, sans-serif" font-weight="600">SOLID BASE</text>
+    <text x="100" y="105" text-anchor="middle" fill="#f4f4f5" font-size="12" font-family="Inter, sans-serif" font-weight="600">FLAT BASE</text>
   `,
   cooler_hdt: `
     <rect x="45" y="70" width="110" height="60" rx="4" stroke="#71717a" stroke-width="1.5" />
-    <!-- 4 Direct pipes -->
     <line x1="60" y1="50" x2="60" y2="130" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
     <line x1="85" y1="50" x2="85" y2="130" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
     <line x1="115" y1="50" x2="115" y2="130" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
     <line x1="140" y1="50" x2="140" y2="130" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
-    <text x="100" y="150" text-anchor="middle" fill="#a1a1aa" font-size="11" font-family="Inter, sans-serif">EXPOSED HEATPIPES</text>
+    <text x="100" y="150" text-anchor="middle" fill="#a1a1aa" font-size="11" font-family="Inter, sans-serif">HEATPIPES</text>
+  `,
+  cooler_fullcover: `
+    <rect x="25" y="45" width="150" height="110" rx="8" stroke="#ffffff" stroke-width="2" />
+    <rect x="45" y="60" width="110" height="80" rx="4" stroke="#71717a" stroke-width="1.5" />
+    <text x="100" y="105" text-anchor="middle" fill="#f4f4f5" font-size="12" font-family="Inter, sans-serif" font-weight="600">FULL-COVER</text>
   `,
   paste_tim: `
     <rect x="50" y="80" width="100" height="40" rx="4" stroke="#71717a" stroke-width="1.5" />
     <path d="M 60 100 Q 100 85 140 100" stroke="#ffffff" stroke-width="2.5" fill="none" />
-    <text x="100" y="145" text-anchor="middle" fill="#f4f4f5" font-size="12" font-family="Inter, sans-serif" font-weight="600">THERMAL INTERFACE</text>
+    <text x="100" y="145" text-anchor="middle" fill="#f4f4f5" font-size="12" font-family="Inter, sans-serif" font-weight="600">PASTE</text>
   `,
 };
 
@@ -80,6 +52,7 @@ const dom = {
   viewCompleted: document.getElementById("view-completed"),
 
   // Top header
+  headerCpuTag: document.getElementById("header-cpu-tag"),
   stopwatchContainer: document.getElementById("stopwatch-container"),
   swTime: document.getElementById("sw-time"),
   swTotal: document.getElementById("sw-total"),
@@ -95,17 +68,15 @@ const dom = {
   scanValSocket: document.getElementById("scan-val-socket"),
   scanValSensor: document.getElementById("scan-val-sensor"),
   scanAnimStatus: document.getElementById("scan-anim-status"),
+  chipCenterText: document.getElementById("chip-center-text"),
 
   // Wizard
-  wizSocketDetectedNote: document.getElementById("wiz-socket-detected-note"),
   visualSvg: document.getElementById("visual-svg"),
   visualCaptionTitle: document.getElementById("visual-caption-title"),
-  visualCaptionSub: document.getElementById("visual-caption-sub"),
   sumProfileName: document.getElementById("sum-profile-name"),
   sumPeakTemp: document.getElementById("sum-peak-temp"),
   sumReleaseTemp: document.getElementById("sum-release-temp"),
   sumDuration: document.getElementById("sum-duration"),
-  sumDesc: document.getElementById("sum-desc"),
   chkSim: document.getElementById("chk-sim"),
 
   // Active
@@ -134,7 +105,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // =============================================================================
-// SCREEN 0: AUTOSCAN WITH CLEAN B&W ANIMATION
+// SCREEN 0: AUTOSCAN
 // =============================================================================
 
 async function runAutoscan() {
@@ -148,36 +119,37 @@ async function runAutoscan() {
     const sensor = data.sensor || {};
     const temp = data.sensor_temp || 30.0;
 
-    // Step 1: Reveal CPU
-    await sleep(400);
-    dom.scanValCpu.textContent = `${cpu.model || "Unknown Processor"} (${cpu.cores}C / ${cpu.threads}T)`;
+    // CPU
+    await sleep(300);
+    dom.scanValCpu.textContent = cpu.model || "Unknown";
     dom.scanItemCpu.classList.remove("pending");
     dom.scanItemCpu.classList.add("done");
+    dom.headerCpuTag.textContent = cpu.model || "Ready";
 
-    // Step 2: Reveal Socket
-    await sleep(400);
-    const sockName = sock.socket ? `${sock.socket} (${(sock.class || "PGA").toUpperCase()})` : "AMD AM4 (PGA)";
+    // Socket
+    await sleep(300);
+    const sockName = sock.socket ? `${sock.socket} (${(sock.class || "PGA").toUpperCase()})` : "AM4";
     dom.scanValSocket.textContent = sockName;
     dom.scanItemSocket.classList.remove("pending");
     dom.scanItemSocket.classList.add("done");
+    dom.chipCenterText.textContent = sock.socket || "CPU";
 
-    // Step 3: Reveal Sensor
-    await sleep(400);
-    dom.scanValSensor.textContent = `${sensor.name || "Hardware Sensor"} (${temp.toFixed(1)}°C)`;
+    // Sensor
+    await sleep(300);
+    dom.scanValSensor.textContent = `${temp.toFixed(1)}°C (${sensor.name || "Sensor"})`;
     dom.scanItemSensor.classList.remove("pending");
     dom.scanItemSensor.classList.add("done");
     dom.hwSensorTemp.textContent = `${temp.toFixed(1)}°C`;
 
-    dom.scanAnimStatus.textContent = "Hardware detected";
+    dom.scanAnimStatus.textContent = "Ready";
 
-    // Preselect detected socket
+    // Auto-lock socket from detection
     const sockClass = (sock.class || "pga").toLowerCase();
     if (["pga", "lga", "hedt"].includes(sockClass)) {
       state.socket = sockClass;
-      dom.wizSocketDetectedNote.textContent = `Auto-detected ${cpu.model} on ${sock.socket} (${sockClass.toUpperCase()}).`;
     }
 
-    await sleep(600);
+    await sleep(500);
     completeScan();
   } catch (err) {
     console.error("Autoscan error:", err);
@@ -189,79 +161,54 @@ function completeScan() {
   if (state.scanCompleted) return;
   state.scanCompleted = true;
   switchView("view-wizard");
-  goToWizardStep(1);
+  goToWizardStep("cooler");
 }
 
 // =============================================================================
-// SCREEN 1: STEP-BY-STEP QUESTIONNAIRE (OPTIONS LEFT, GRAPHIC RIGHT)
+// SCREEN 1: 2-STEP QUESTIONNAIRE (COOLER -> PASTE -> REVIEW)
 // =============================================================================
 
-function goToWizardStep(step) {
-  for (let i = 1; i <= 4; i++) {
-    const pane = document.getElementById(`step-pane-${i}`);
+function goToWizardStep(stepName) {
+  const steps = ["cooler", "paste", "review"];
+  steps.forEach((name) => {
+    const pane = document.getElementById(`step-pane-${name}`);
     if (pane) {
-      if (i === step) pane.classList.add("active");
+      if (name === stepName) pane.classList.add("active");
       else pane.classList.remove("active");
     }
-  }
+  });
 
-  // Update right-side B&W illustration based on active step
-  updateWizardIllustration(step);
+  updateIllustration(stepName);
 
-  if (step === 4) {
+  if (stepName === "review") {
     resolveAndShowSummary();
   }
 }
 
-function updateWizardIllustration(step) {
-  if (step === 1) {
-    dom.visualSvg.innerHTML = illustrations.socket_pga;
-    dom.visualCaptionTitle.textContent = "Socket AM4 (PGA)";
-    dom.visualCaptionSub.textContent = "Pins are on the processor. Warming is required to prevent pin pull-out damage.";
-  } else if (step === 2) {
+function updateIllustration(stepName) {
+  if (stepName === "cooler") {
     dom.visualSvg.innerHTML = illustrations.cooler_flat;
-    dom.visualCaptionTitle.textContent = "Cooler Coldplate";
-    dom.visualCaptionSub.textContent = "Baseplate conducts heat into the thermal paste layer to break suction.";
-  } else if (step === 3) {
+    dom.visualCaptionTitle.textContent = "Cooler Base";
+  } else if (stepName === "paste") {
     dom.visualSvg.innerHTML = illustrations.paste_tim;
-    dom.visualCaptionTitle.textContent = "Thermal Interface Material";
-    dom.visualCaptionSub.textContent = "Viscosity drops as temperature rises, reaching its liquid state.";
-  } else if (step === 4) {
-    dom.visualSvg.innerHTML = illustrations.socket_pga;
-    dom.visualCaptionTitle.textContent = "Ready to Begin";
-    dom.visualCaptionSub.textContent = "The cycle will modulate load and guide you when it is safe to twist and remove.";
+    dom.visualCaptionTitle.textContent = "Thermal Paste";
+  } else if (stepName === "review") {
+    dom.visualSvg.innerHTML = illustrations.cooler_flat;
+    dom.visualCaptionTitle.textContent = "Ready";
   }
-}
-
-function selectSocket(sock) {
-  state.socket = sock;
-  highlightChoice("step-pane-1", sock);
-  if (sock === "pga") dom.visualSvg.innerHTML = illustrations.socket_pga;
-  else if (sock === "lga") dom.visualSvg.innerHTML = illustrations.socket_lga;
-  else if (sock === "hedt") dom.visualSvg.innerHTML = illustrations.socket_hedt;
-  goToWizardStep(2);
 }
 
 function selectCooler(cooler) {
   state.cooler = cooler;
-  highlightChoice("step-pane-2", cooler);
   if (cooler === "flat") dom.visualSvg.innerHTML = illustrations.cooler_flat;
   else if (cooler === "hdt") dom.visualSvg.innerHTML = illustrations.cooler_hdt;
-  goToWizardStep(3);
+  else if (cooler === "fullcover") dom.visualSvg.innerHTML = illustrations.cooler_fullcover;
+  goToWizardStep("paste");
 }
 
 function selectPaste(paste) {
   state.paste = paste;
-  highlightChoice("step-pane-3", paste);
-  goToWizardStep(4);
-}
-
-function highlightChoice(paneId, val) {
-  const pane = document.getElementById(paneId);
-  if (!pane) return;
-  pane.querySelectorAll(".choice-card").forEach((btn) => {
-    btn.classList.remove("selected");
-  });
+  goToWizardStep("review");
 }
 
 async function resolveAndShowSummary() {
@@ -281,11 +228,10 @@ async function resolveAndShowSummary() {
 
     const curve = data.curve;
     if (curve) {
-      dom.sumProfileName.textContent = `Combo #${curve.id} — ${curve.name}`;
+      dom.sumProfileName.textContent = curve.name;
       dom.sumPeakTemp.textContent = `${Math.max(...curve.temps)}°C`;
       dom.sumReleaseTemp.textContent = `${curve.temps[curve.temps.length - 1]}°C`;
       dom.sumDuration.textContent = formatTime(curve.duration);
-      dom.sumDesc.textContent = `Calculated 6-stage trajectory for ${curve.name}.`;
     }
   } catch (err) {
     console.error("Resolve error:", err);
@@ -293,7 +239,7 @@ async function resolveAndShowSummary() {
 }
 
 // =============================================================================
-// SCREEN 2: ACTIVE STRESSER & TELEMETRY
+// SCREEN 2: ACTIVE TEMPERATURE LOCK
 // =============================================================================
 
 async function startHeatingCycle() {
@@ -339,17 +285,17 @@ async function pollTelemetry() {
       state.peakTemp = st.current_temp;
     }
 
-    // Top Header Stopwatch
+    // Top Header
     dom.swTime.textContent = formatTime(st.elapsed);
     dom.swTotal.textContent = formatTime(st.duration);
     dom.swStageBadge.textContent = st.stage || "Hold";
     dom.swRemaining.textContent = `${formatTime(st.remaining)} left`;
     dom.hwSensorTemp.textContent = `${st.current_temp.toFixed(1)}°C`;
 
-    // Active Dashboard Left Pane
+    // Active Left Pane
     dom.actStageStep.textContent = `Stage ${st.stage_idx || 1} of 6 \u00b7 ${st.stage}`;
-    dom.actStageTitle.textContent = st.stage_title || "Thermal Regulation";
-    dom.actDynamicCopy.textContent = st.dynamic_status || "Modulating thermal load...";
+    dom.actStageTitle.textContent = st.stage_title || "Heating";
+    dom.actDynamicCopy.textContent = st.dynamic_status || "Modulating load...";
     dom.actUserAction.textContent = st.stage_action || "Keep cooler secured.";
 
     // Metric Digits
@@ -361,7 +307,7 @@ async function pollTelemetry() {
     state.history = st.history || [];
     drawCleanChart(dom.telemetryCanvas, st, state.history);
 
-    // Completion or Abort
+    // Completion / Abort
     if (st.finished) {
       clearInterval(state.pollTimer);
       state.pollTimer = null;
@@ -369,7 +315,7 @@ async function pollTelemetry() {
     } else if (st.aborted) {
       clearInterval(state.pollTimer);
       state.pollTimer = null;
-      alert(`Heating cycle stopped: ${st.abort_reason || "User aborted"}`);
+      alert(`Cycle stopped: ${st.abort_reason || "Stopped"}`);
       restartToWizard();
     }
   } catch (err) {
@@ -378,7 +324,7 @@ async function pollTelemetry() {
 }
 
 async function abortCycle() {
-  if (confirm("Stop heating cycle? CPU load will immediately drop to 0%.")) {
+  if (confirm("Stop heating? CPU load will immediately drop to 0%.")) {
     try {
       await fetch("/api/stop", { method: "POST" });
       if (state.pollTimer) clearInterval(state.pollTimer);
@@ -399,11 +345,11 @@ function handleFinished(st) {
 }
 
 // =============================================================================
-// SCREEN 3: COMPLETION & SHUTDOWN
+// SCREEN 3: SHUTDOWN
 // =============================================================================
 
 async function triggerPoweroff() {
-  if (!confirm("Are you ready to shut down the computer now?\nSave any other work before proceeding.")) {
+  if (!confirm("Shut down computer now?")) {
     return;
   }
 
@@ -417,14 +363,14 @@ async function triggerPoweroff() {
       body: JSON.stringify({ dry_run: false }),
     });
     const data = await res.json();
-    dom.shutdownStatusText.textContent = data.message || "Poweroff signal sent.";
+    dom.shutdownStatusText.textContent = data.message || "Poweroff command sent.";
   } catch (err) {
     dom.shutdownStatusText.textContent = `Shutdown error: ${err.message}`;
   }
 }
 
 // =============================================================================
-// CLEAN B&W CANVAS CHART
+// CANVAS CHART
 // =============================================================================
 
 function drawCleanChart(canvas, st, history) {
@@ -467,7 +413,7 @@ function drawCleanChart(canvas, st, history) {
     ctx.fillText(`${t}°C`, pad.left - 6, y + 4);
   }
 
-  // Target Curve (Subtle dashed line)
+  // Target Curve (Dashed line)
   const curve = st.curve;
   if (curve && curve.times && curve.times.length) {
     ctx.beginPath();
@@ -482,7 +428,7 @@ function drawCleanChart(canvas, st, history) {
     ctx.setLineDash([]);
   }
 
-  // Actual Temperature Line (Solid Crisp White)
+  // Actual Temperature Line
   if (history.length > 1) {
     ctx.beginPath();
     ctx.moveTo(toX(history[0].t), toY(history[0].temp));
@@ -493,7 +439,6 @@ function drawCleanChart(canvas, st, history) {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Current point
     const cur = history[history.length - 1];
     ctx.beginPath();
     ctx.arc(toX(cur.t), toY(cur.temp), 3.5, 0, Math.PI * 2);
@@ -524,7 +469,7 @@ function switchView(viewId) {
 function restartToWizard() {
   switchView("view-wizard");
   dom.stopwatchContainer.classList.add("hidden");
-  goToWizardStep(1);
+  goToWizardStep("cooler");
 }
 
 function formatTime(sec) {

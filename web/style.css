@@ -56,7 +56,7 @@ html, body {
    ========================================================================== */
 
 .header {
-  height: 64px;
+  height: 60px;
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
@@ -66,6 +66,12 @@ html, body {
   flex-shrink: 0;
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .logo {
   font-size: 15px;
   font-weight: 600;
@@ -73,11 +79,18 @@ html, body {
   color: var(--text-main);
 }
 
+.header-tag {
+  font-size: 12px;
+  color: var(--text-muted);
+  border-left: 1px solid var(--border-subtle);
+  padding-left: 12px;
+}
+
 .stopwatch-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 4px 16px;
+  padding: 2px 16px;
 }
 
 .sw-time {
@@ -88,28 +101,28 @@ html, body {
 
 .sw-digits {
   font-family: var(--font-mono);
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
   color: var(--text-main);
 }
 
 .sw-total {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-dim);
 }
 
 .sw-sub {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   margin-top: -2px;
 }
 
 .sw-pill {
   font-size: 11px;
   font-weight: 500;
-  padding: 1px 7px;
+  padding: 1px 6px;
   border-radius: 9999px;
   background: var(--text-main);
   color: var(--bg-app);
@@ -174,7 +187,7 @@ html, body {
 
 /* Left Pane: Options & Steps */
 .left-pane {
-  padding: 40px 48px;
+  padding: 48px 56px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -185,7 +198,7 @@ html, body {
 .step-pane {
   display: none;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
 }
 
 .step-pane.active {
@@ -193,7 +206,7 @@ html, body {
 }
 
 .pane-header {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .step-label {
@@ -203,7 +216,7 @@ html, body {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   display: inline-block;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .tag-success {
@@ -212,17 +225,16 @@ html, body {
 }
 
 .pane-title {
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 600;
   color: var(--text-main);
   letter-spacing: -0.02em;
-  margin-bottom: 8px;
 }
 
 .pane-desc {
   font-size: 14px;
   color: var(--text-muted);
-  line-height: 1.6;
+  margin-top: 4px;
 }
 
 /* Choice Cards (Step Options) */
@@ -234,7 +246,7 @@ html, body {
 
 .choice-card {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 14px;
   padding: 16px 18px;
   background: var(--bg-card);
@@ -258,11 +270,10 @@ html, body {
 }
 
 .choice-radio {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   border: 1.5px solid var(--border-hover);
-  margin-top: 2px;
   flex-shrink: 0;
   transition: all 0.15s ease;
 }
@@ -280,7 +291,7 @@ html, body {
 .choice-text {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 
 .choice-title {
@@ -292,7 +303,6 @@ html, body {
 .choice-desc {
   font-size: 13px;
   color: var(--text-muted);
-  line-height: 1.4;
 }
 
 /* Right Pane: Animations & Visuals */
@@ -310,23 +320,23 @@ html, body {
   align-items: center;
   justify-content: center;
   text-align: center;
-  gap: 32px;
-  max-width: 380px;
+  gap: 24px;
+  max-width: 360px;
 }
 
 /* Clean B&W Chip Animation */
 .chip-graphic {
   position: relative;
-  width: 140px;
-  height: 140px;
+  width: 130px;
+  height: 130px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .chip-body {
-  width: 110px;
-  height: 110px;
+  width: 100px;
+  height: 100px;
   background: #111114;
   border: 1.5px solid #3f3f46;
   border-radius: 8px;
@@ -338,8 +348,8 @@ html, body {
 }
 
 .chip-inner-square {
-  width: 50px;
-  height: 50px;
+  width: 44px;
+  height: 44px;
   border: 1px dashed #52525b;
   position: absolute;
 }
@@ -348,7 +358,7 @@ html, body {
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
-  color: var(--text-dim);
+  color: var(--text-main);
   z-index: 2;
 }
 
@@ -360,14 +370,14 @@ html, body {
   right: 0;
   height: 2px;
   background: #ffffff;
-  box-shadow: 0 0 12px #ffffff;
+  box-shadow: 0 0 10px #ffffff;
   animation: beamScan 2.2s infinite ease-in-out alternate;
 }
 
 @keyframes beamScan {
   0% { transform: translateY(0px); opacity: 0.2; }
   50% { opacity: 1; }
-  100% { transform: translateY(108px); opacity: 0.2; }
+  100% { transform: translateY(98px); opacity: 0.2; }
 }
 
 /* Chip Pin Stubs */
@@ -384,20 +394,20 @@ html, body {
 
 .chip-pins-top {
   top: 4px;
-  width: 90px;
+  width: 80px;
   height: 8px;
 }
 
 .chip-pins-bottom {
   bottom: 4px;
-  width: 90px;
+  width: 80px;
   height: 8px;
 }
 
 .chip-pins-left {
   left: 4px;
   width: 8px;
-  height: 90px;
+  height: 80px;
   background: repeating-linear-gradient(
     0deg,
     #52525b,
@@ -410,7 +420,7 @@ html, body {
 .chip-pins-right {
   right: 4px;
   width: 8px;
-  height: 90px;
+  height: 80px;
   background: repeating-linear-gradient(
     0deg,
     #52525b,
@@ -423,86 +433,60 @@ html, body {
 .animation-caption {
   display: flex;
   flex-direction: column;
-  gap: 6px;
 }
 
 .caption-main {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-main);
-}
-
-.caption-sub {
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 500;
   color: var(--text-muted);
 }
 
-/* Autoscan Items (Left Pane of View 0) */
+/* Autoscan Items */
 .scan-items {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   margin-top: 8px;
 }
 
 .scan-item {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 14px;
   padding: 14px 16px;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  transition: all 0.2s ease;
+  border-radius: var(--radius-sm);
 }
 
 .scan-item.done {
   border-color: var(--border-hover);
 }
 
-.scan-item-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: var(--radius-sm);
-  background: #18181b;
-  border: 1px solid var(--border-subtle);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-}
-
-.scan-item.done .scan-item-icon {
-  color: var(--text-main);
-  border-color: var(--border-hover);
-}
-
 .scan-item-label {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 .scan-item-val {
   font-size: 14px;
   font-weight: 500;
   color: var(--text-main);
+  font-family: var(--font-mono);
 }
 
-/* Summary Card (Step 4) */
+/* Summary Card */
 .summary-card {
   border: 1px solid var(--border-subtle);
   background: var(--bg-card);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
 .summary-item {
   display: flex;
   justify-content: space-between;
-  padding: 13px 18px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -516,20 +500,20 @@ html, body {
 }
 
 .summary-v {
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-main);
   font-family: var(--font-mono);
 }
 
 /* Checkbox */
 .checkbox-row {
-  margin: 10px 0;
+  margin: 6px 0;
 }
 
 .clean-checkbox {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   cursor: pointer;
 }
 
@@ -538,15 +522,14 @@ html, body {
 }
 
 .box-check {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   border: 1px solid var(--border-hover);
-  border-radius: 4px;
+  border-radius: 3px;
   background: var(--bg-card);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
 }
 
 .clean-checkbox input:checked + .box-check {
@@ -556,68 +539,64 @@ html, body {
 
 .clean-checkbox input:checked + .box-check::after {
   content: "";
-  width: 4px;
-  height: 8px;
+  width: 3px;
+  height: 7px;
   border: solid var(--bg-app);
-  border-width: 0 2px 2px 0;
+  border-width: 0 1.5px 1.5px 0;
   transform: rotate(45deg);
-  margin-top: -2px;
+  margin-top: -1px;
 }
 
 .box-text {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
-/* Visual Diagram Area (Wizard Right Pane) */
+/* Visual Diagram Area */
 .visual-diagram {
-  width: 220px;
-  height: 220px;
+  width: 200px;
+  height: 200px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   background: var(--bg-card);
 }
 
-/* ==========================================================================
-   ACTIVE VIEW (PID TEMPERATURE LOCK)
-   ========================================================================== */
-
+/* Active View */
 .action-box {
-  padding: 16px 18px;
+  padding: 14px 16px;
   background: var(--bg-card);
-  border-left: 3px solid var(--text-main);
+  border-left: 2px solid var(--text-main);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .action-tag {
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .action-text {
   font-size: 14px;
   color: var(--text-main);
-  line-height: 1.5;
 }
 
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .stat-card {
-  padding: 14px;
+  padding: 12px 14px;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
@@ -628,49 +607,48 @@ html, body {
 .stat-label {
   font-size: 11px;
   color: var(--text-muted);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .stat-val {
   font-family: var(--font-mono);
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 600;
   color: var(--text-main);
 }
 
 .stat-unit {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-dim);
   margin-left: 2px;
 }
 
-/* Right Pane: Clean Canvas Chart */
+/* Chart */
 .chart-card {
   width: 100%;
   max-width: 540px;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 20px;
+  padding: 18px;
 }
 
 .chart-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .chart-title {
   font-size: 13px;
-  font-weight: 500;
   color: var(--text-muted);
 }
 
 .chart-legend {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   font-size: 11px;
   color: var(--text-dim);
 }
@@ -682,20 +660,20 @@ html, body {
 }
 
 .leg-dash {
-  width: 14px;
+  width: 12px;
   height: 0;
   border-top: 1.5px dashed #71717a;
 }
 
 .leg-line {
-  width: 14px;
+  width: 12px;
   height: 2px;
   background: #ffffff;
 }
 
 .canvas-container {
   width: 100%;
-  height: 260px;
+  height: 240px;
 }
 
 .canvas-container canvas {
@@ -704,39 +682,35 @@ html, body {
   display: block;
 }
 
-/* ==========================================================================
-   COMPLETION VIEW (TOUCH & TWIST + SHUTDOWN)
-   ========================================================================== */
-
+/* Protocol Steps */
 .protocol-steps {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: 10px;
+  margin-bottom: 20px;
 }
 
 .protocol-step {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
-  padding: 12px 16px;
+  gap: 12px;
+  padding: 10px 14px;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
 }
 
 .protocol-step.highlight {
-  border-color: var(--text-main);
-  background: var(--bg-card-hover);
+  border-color: var(--border-hover);
 }
 
 .proto-num {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-muted);
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   border: 1px solid var(--border-hover);
   display: flex;
@@ -746,22 +720,15 @@ html, body {
   margin-top: 2px;
 }
 
-.protocol-step.highlight .proto-num {
-  border-color: var(--text-main);
-  color: var(--text-main);
-}
-
 .proto-content strong {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-main);
   display: block;
-  margin-bottom: 2px;
 }
 
 .proto-content p {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-muted);
-  line-height: 1.4;
 }
 
 .final-summary-stats {
@@ -769,13 +736,13 @@ html, body {
   justify-content: space-around;
   width: 100%;
   border-bottom: 1px solid var(--border-subtle);
-  padding-bottom: 24px;
+  padding-bottom: 20px;
 }
 
 .f-metric {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .f-label {
@@ -785,7 +752,7 @@ html, body {
 
 .f-num {
   font-family: var(--font-mono);
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 600;
   color: var(--text-main);
 }
@@ -794,25 +761,21 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   color: var(--text-muted);
 }
 
 .twist-label {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-main);
-  font-weight: 500;
 }
 
-/* ==========================================================================
-   BUTTONS & FOOTERS
-   ========================================================================== */
-
+/* Footer & Buttons */
 .pane-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 20px;
+  padding-top: 16px;
   border-top: 1px solid var(--border-subtle);
   margin-top: auto;
 }
@@ -820,14 +783,14 @@ html, body {
 .column-footer {
   flex-direction: column;
   align-items: stretch;
-  gap: 10px;
+  gap: 8px;
 }
 
 .btn {
   font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 500;
-  padding: 10px 18px;
+  padding: 8px 16px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   border: 1px solid transparent;
@@ -868,25 +831,26 @@ html, body {
 }
 
 .btn-danger-solid {
-  background: #ef4444;
-  color: #ffffff;
+  background: #ffffff;
+  color: #000000;
   font-weight: 600;
-  padding: 14px 20px;
-  font-size: 14px;
+  padding: 12px 18px;
+  font-size: 13px;
 }
 
 .btn-danger-solid:hover {
-  background: #dc2626;
+  background: #e4e4e7;
 }
 
 .btn-danger-outline {
   background: transparent;
-  border-color: #ef4444;
-  color: #ef4444;
+  border-color: var(--border-hover);
+  color: var(--text-muted);
 }
 
 .btn-danger-outline:hover {
-  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+  color: #ef4444;
 }
 
 .shutdown-note {
@@ -899,7 +863,6 @@ html, body {
   display: none !important;
 }
 
-/* Responsive adjustments */
 @media (max-width: 900px) {
   .split-view {
     grid-template-columns: 1fr;
