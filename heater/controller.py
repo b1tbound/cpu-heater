@@ -61,50 +61,100 @@ STAGE_GUIDES = {
 
 
 class ThermalPID:
-    """PID controller with anti-windup clamping and derivative filtering."""
+    """PID controller with low-pass derivative filtering, deadband, and slew-rate limiting."""
 
-    def __init__(self, kp: float = 0.055, ki: float = 0.003, kd: float = 0.035):
+    def __init__(
+        self,
+        kp: float = 0.045,
+        ki: float = 0.008,
+        kd: float = 0.090,
+        filter_tau: float = 0.8,
+        deadband: float = 0.5,
+        max_slew_up: float = 0.15,    # Max 15% load increase per second
+        max_slew_down: float = 0.25,  # Max 25% load decrease per second
+    ):
         self.kp = kp
         self.ki = ki
         self.kd = kd
+        self.filter_tau = filter_tau
+        self.deadband = deadband
+        self.max_slew_up = max_slew_up
+        self.max_slew_down = max_slew_down
+
         self.integral = 0.0
-        self.last_error = 0.0
+        self.last_load = 0.0
+        self.filtered_temp: float | None = None
+        self.last_filtered_temp: float | None = None
         self.last_time = time.time()
-        self.integral_max = 0.6
 
     def reset(self):
         self.integral = 0.0
-        self.last_error = 0.0
+        self.last_load = 0.0
+        self.filtered_temp = None
+        self.last_filtered_temp = None
         self.last_time = time.time()
 
-    def update(self, current: float, target: float) -> tuple[float, float, float, float]:
+    def update(self, current: float, target: float, dt: float | None = None) -> tuple[float, float, float, float]:
         now = time.time()
-        dt = max(0.05, min(2.0, now - self.last_time))
+        if dt is None:
+            dt = max(0.05, min(2.0, now - self.last_time))
         self.last_time = now
 
-        error = target - current
+        # Low-pass filter measured temperature to eliminate sensor quantization noise & jitter
+        if self.filtered_temp is None:
+            self.filtered_temp = current
+            self.last_filtered_temp = current
+
+        alpha = dt / (dt + self.filter_tau)
+        self.filtered_temp += alpha * (current - self.filtered_temp)
+
+        error = target - self.filtered_temp
+
+        # Deadband handling: smooth quadratic attenuation inside deadband to avoid hunting
+        if abs(error) <= self.deadband:
+            effective_error = (error / self.deadband) * (abs(error) / self.deadband) * self.deadband
+        else:
+            effective_error = error
 
         # Proportional term
-        p = self.kp * error
+        p = self.kp * effective_error
 
         # Integral term with anti-windup clamping
-        # Only integrate when error is moderate (avoid large windup when far away)
-        if abs(error) < 15.0:
-            self.integral += error * dt
-            self.integral = max(-self.integral_max, min(self.integral_max, self.integral))
-        i = self.ki * self.integral
+        # Only integrate when error is within reasonable window to prevent windup
+        if abs(error) < 14.0:
+            self.integral += self.ki * effective_error * dt
+            self.integral = max(0.0, min(0.85, self.integral))
+        i = self.integral
 
-        # Derivative term
-        derivative = (error - self.last_error) / dt if dt > 0 else 0.0
-        d = self.kd * derivative
-        self.last_error = error
+        # Derivative term: calculated on process variable (negative dT/dt)
+        # Prevents derivative kick and acts as an anticipatory brake on thermal momentum
+        d_temp = (self.filtered_temp - self.last_filtered_temp) / dt if dt > 0 else 0.0
+        self.last_filtered_temp = self.filtered_temp
+        d = -self.kd * d_temp
 
-        # Feedforward baseline: if target > 40°C, provide small baseline duty
-        ff = 0.15 if target > 40.0 else 0.05
+        # Feedforward baseline: gentle thermal support if target > ambient
+        ff = max(0.0, min(0.30, 0.005 * (target - 28.0))) if target > 32.0 else 0.0
 
-        out = p + i + d + ff
-        clamped = max(0.0, min(1.0, out))
-        return clamped, p, i, d
+        raw_output = p + i + d + ff
+        clamped_output = max(0.0, min(1.0, raw_output))
+
+        # Slew-rate limiter: prevents bang-bang oscillation and thermal hunting
+        if raw_output <= 0.0:
+            # Immediate drop to 0% if target is far below current (cooling or emergency)
+            load = 0.0
+        else:
+            # Allow faster ramp when far below target
+            slew_up = (self.max_slew_up * 2.5 if error > 6.0 else self.max_slew_up) * dt
+            slew_down = (self.max_slew_down * 2.0 if error < -3.0 else self.max_slew_down) * dt
+
+            if clamped_output > self.last_load:
+                load = min(clamped_output, self.last_load + slew_up)
+            else:
+                load = max(clamped_output, self.last_load - slew_down)
+
+        load = max(0.0, min(1.0, load))
+        self.last_load = load
+        return load, p, i, d
 
 
 class ThermalCycleSession:
@@ -298,7 +348,7 @@ class ThermalCycleSession:
                     target_load = 0.0
                     self.pid.reset()
                 else:
-                    target_load, _, _, _ = self.pid.update(cur_temp, tgt)
+                    target_load, _, _, _ = self.pid.update(cur_temp, tgt, dt=scaled_dt)
 
                 self.current_load = target_load
                 if not self.is_simulated:

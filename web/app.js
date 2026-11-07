@@ -269,15 +269,42 @@ async function startHeatingCycle() {
   }
 }
 
+let isPolling = false;
+let pollTimeoutId = null;
+
 function startTelemetryPolling() {
-  if (state.pollTimer) clearInterval(state.pollTimer);
-  state.pollTimer = setInterval(pollTelemetry, 250);
-  pollTelemetry();
+  stopTelemetryPolling();
+  scheduleNextPoll(0);
+}
+
+function stopTelemetryPolling() {
+  if (pollTimeoutId) {
+    clearTimeout(pollTimeoutId);
+    pollTimeoutId = null;
+  }
+  isPolling = false;
+}
+
+function scheduleNextPoll(delayMs = 250) {
+  stopTelemetryPolling();
+  pollTimeoutId = setTimeout(async () => {
+    await pollTelemetry();
+    if (state.session && state.session.running) {
+      scheduleNextPoll(250);
+    }
+  }, delayMs);
 }
 
 async function pollTelemetry() {
+  if (isPolling) return;
+  isPolling = true;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 1200);
+
   try {
-    const res = await fetch("/api/status");
+    const res = await fetch("/api/status", { signal: controller.signal });
+    clearTimeout(timeoutId);
     const st = await res.json();
     state.session = st;
 
@@ -285,41 +312,46 @@ async function pollTelemetry() {
       state.peakTemp = st.current_temp;
     }
 
-    // Top Header
-    dom.swTime.textContent = formatTime(st.elapsed);
-    dom.swTotal.textContent = formatTime(st.duration);
-    dom.swStageBadge.textContent = st.stage || "Hold";
-    dom.swRemaining.textContent = `${formatTime(st.remaining)} left`;
-    dom.hwSensorTemp.textContent = `${st.current_temp.toFixed(1)}°C`;
+    requestAnimationFrame(() => {
+      // Top Header
+      dom.swTime.textContent = formatTime(st.elapsed);
+      dom.swTotal.textContent = formatTime(st.duration);
+      dom.swStageBadge.textContent = st.stage || "Hold";
+      dom.swRemaining.textContent = `${formatTime(st.remaining)} left`;
+      dom.hwSensorTemp.textContent = `${st.current_temp.toFixed(1)}°C`;
 
-    // Active Left Pane
-    dom.actStageStep.textContent = `Stage ${st.stage_idx || 1} of 6 \u00b7 ${st.stage}`;
-    dom.actStageTitle.textContent = st.stage_title || "Heating";
-    dom.actDynamicCopy.textContent = st.dynamic_status || "Modulating load...";
-    dom.actUserAction.textContent = st.stage_action || "Keep cooler secured.";
+      // Active Left Pane
+      dom.actStageStep.textContent = `Stage ${st.stage_idx || 1} of 6 · ${st.stage}`;
+      dom.actStageTitle.textContent = st.stage_title || "Heating";
+      dom.actDynamicCopy.textContent = st.dynamic_status || "Modulating load...";
+      dom.actUserAction.textContent = st.stage_action || "Keep cooler secured.";
 
-    // Metric Digits
-    dom.actCurTemp.textContent = st.current_temp.toFixed(1);
-    dom.actTgtTemp.textContent = st.target_temp.toFixed(1);
-    dom.actLoadVal.textContent = st.load_pct.toFixed(0);
+      // Metric Digits
+      dom.actCurTemp.textContent = st.current_temp.toFixed(1);
+      dom.actTgtTemp.textContent = st.target_temp.toFixed(1);
+      dom.actLoadVal.textContent = st.load_pct.toFixed(0);
 
-    // Render Canvas Chart
-    state.history = st.history || [];
-    drawCleanChart(dom.telemetryCanvas, st, state.history);
+      // Render Canvas Chart
+      state.history = st.history || [];
+      drawCleanChart(dom.telemetryCanvas, st, state.history);
+    });
 
     // Completion / Abort
     if (st.finished) {
-      clearInterval(state.pollTimer);
-      state.pollTimer = null;
+      stopTelemetryPolling();
       handleFinished(st);
     } else if (st.aborted) {
-      clearInterval(state.pollTimer);
-      state.pollTimer = null;
+      stopTelemetryPolling();
       alert(`Cycle stopped: ${st.abort_reason || "Stopped"}`);
       restartToWizard();
     }
   } catch (err) {
-    console.error("Telemetry poll error:", err);
+    if (err.name !== "AbortError") {
+      console.warn("Telemetry poll error:", err);
+    }
+  } finally {
+    clearTimeout(timeoutId);
+    isPolling = false;
   }
 }
 
@@ -327,7 +359,7 @@ async function abortCycle() {
   if (confirm("Stop heating? CPU load will immediately drop to 0%.")) {
     try {
       await fetch("/api/stop", { method: "POST" });
-      if (state.pollTimer) clearInterval(state.pollTimer);
+      stopTelemetryPolling();
       restartToWizard();
     } catch (err) {
       alert("Abort failed: " + err.message);
@@ -373,14 +405,28 @@ async function triggerPoweroff() {
 // CANVAS CHART
 // =============================================================================
 
+let cachedCanvasW = 0;
+let cachedCanvasH = 0;
+
 function drawCleanChart(canvas, st, history) {
   if (!canvas) return;
-  const ctx = canvas.getContext("2d");
-  const dpr = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width * dpr;
-  canvas.height = rect.height * dpr;
-  ctx.scale(dpr, dpr);
+  if (rect.width === 0 || rect.height === 0) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  const targetW = Math.round(rect.width * dpr);
+  const targetH = Math.round(rect.height * dpr);
+
+  const ctx = canvas.getContext("2d");
+  if (canvas.width !== targetW || canvas.height !== targetH) {
+    canvas.width = targetW;
+    canvas.height = targetH;
+    cachedCanvasW = rect.width;
+    cachedCanvasH = rect.height;
+  }
+
+  ctx.save();
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   const w = rect.width;
   const h = rect.height;
@@ -454,6 +500,8 @@ function drawCleanChart(canvas, st, history) {
   ctx.strokeStyle = "#3f3f46";
   ctx.lineWidth = 1;
   ctx.stroke();
+
+  ctx.restore();
 }
 
 // =============================================================================

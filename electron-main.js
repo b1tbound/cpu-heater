@@ -3,6 +3,13 @@ const path = require('path');
 const { spawn } = require('child_process');
 const http = require('http');
 
+// Guarantee responsive rendering under heavy CPU workload
+app.commandLine.appendSwitch('disable-background-timer-throttling');
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
+app.commandLine.appendSwitch('disable-renderer-backgrounding');
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('enable-zero-copy');
+
 let mainWindow = null;
 let pythonProcess = null;
 const SERVER_PORT = 8080;

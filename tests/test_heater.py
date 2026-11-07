@@ -133,6 +133,35 @@ class TestControllerAndStresser(unittest.TestCase):
         self.assertFalse(st2["running"])
         self.assertTrue(st2["aborted"])
 
+    def test_pid_stability_no_hunting(self):
+        pid = ThermalPID(kp=0.045, ki=0.009, kd=0.10, filter_tau=0.8)
+        sim = SimulatedSensor(ambient=28.0, tdp_gain=45.0, thermal_mass=15.0)
+        target = 52.0
+        load = 0.0
+        loads = []
+        for _ in range(200):
+            temp = sim.update(load, dt=0.2)
+            load, _, _, _ = pid.update(current=temp, target=target, dt=0.2)
+            loads.append(load)
+
+        # Check last 40 iterations for absence of rapid bang-bang hunting reversals
+        tail = loads[-40:]
+        reversals = sum(1 for i in range(1, len(tail) - 1) if (tail[i] - tail[i-1]) * (tail[i+1] - tail[i]) < -0.0001)
+        self.assertLessEqual(reversals, 2, "PID should be smooth and stable without hunting reversals")
+        # Final temperature should be near target
+        final_temp = sim.read()
+        self.assertAlmostEqual(final_temp, target, delta=1.5)
+
+    def test_stresser_reserves_ui_cores(self):
+        from heater.stresser import StressEngine
+        # When 16 threads requested, StressEngine reserves 2 for UI
+        engine16 = StressEngine(thread_count=16)
+        self.assertEqual(engine16.thread_count, 14)
+
+        # When 8 threads requested on >= 8 core machine
+        engine8 = StressEngine(thread_count=8)
+        self.assertLess(engine8.thread_count, 16)
+
 
 class TestShutdown(unittest.TestCase):
     def test_dry_run_shutdown(self):

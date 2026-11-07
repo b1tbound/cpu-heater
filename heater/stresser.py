@@ -15,6 +15,23 @@ def _cpu_worker(load_pct: mp.Value, stop_event: mp.Event, worker_id: int):
     """Worker process that modulates CPU load using duty-cycle pacing."""
     # Ignore SIGINT in worker; parent controls lifecycle
     signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+    # 1. Lower process priority so Linux CFS / Windows scheduler always prioritizes
+    # the UI compositor (Wayland/X11), Electron renderer, and server threads.
+    if hasattr(os, "nice"):
+        try:
+            os.nice(19)  # Minimum CPU priority on Linux
+        except Exception:
+            pass
+    if os.name == "nt":
+        try:
+            import ctypes
+            ctypes.windll.kernel32.SetPriorityClass(
+                ctypes.windll.kernel32.GetCurrentProcess(), 0x00000040  # IDLE_PRIORITY_CLASS
+            )
+        except Exception:
+            pass
+
     period = 0.05  # 50ms control slice
     data = b"thermal-paste-conditioner-" * 32
 
@@ -29,6 +46,8 @@ def _cpu_worker(load_pct: mp.Value, stop_event: mp.Event, worker_id: int):
                 # Intensive math and hashing
                 hashlib.sha256(data).digest()
                 math.sin(12345.6789)
+            # Brief cooperative yield to guarantee prompt kernel interrupt handling
+            time.sleep(0.0001)
             continue
 
         work_duration = period * duty
@@ -44,7 +63,26 @@ class StressEngine:
     """Manages multi-core load generation with real-time duty cycle adjustment."""
 
     def __init__(self, thread_count: Optional[int] = None):
-        self.thread_count = thread_count or os.cpu_count() or 4
+        total_cpus = os.cpu_count() or 4
+        # Always reserve compute cores for the operating system and Electron UI
+        if thread_count is None:
+            if total_cpus >= 8:
+                self.thread_count = max(1, total_cpus - 2)
+            elif total_cpus >= 4:
+                self.thread_count = max(1, total_cpus - 1)
+            else:
+                self.thread_count = total_cpus
+        else:
+            # If thread_count was passed, cap it to leave UI headroom if >= 4 cores
+            if thread_count >= total_cpus:
+                if total_cpus >= 8:
+                    self.thread_count = max(1, total_cpus - 2)
+                elif total_cpus >= 4:
+                    self.thread_count = max(1, total_cpus - 1)
+                else:
+                    self.thread_count = max(1, total_cpus)
+            else:
+                self.thread_count = max(1, thread_count)
         self._ctx = mp.get_context("fork" if hasattr(os, "fork") else "spawn")
         self._load_val = self._ctx.Value("d", 0.0)
         self._stop_event = self._ctx.Event()
